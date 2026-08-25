@@ -1,6 +1,7 @@
 "use client";
 
 import type { Photo } from "@/core/models";
+import { ImageIcon, PlaceIcon, StarIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export function PhotoTile({
@@ -30,18 +31,21 @@ export function PhotoTile({
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
-        <span className="flex h-full items-center justify-center text-2xl" aria-hidden>🖼️</span>
+        <span className="flex h-full items-center justify-center" aria-hidden>
+          <ImageIcon size={24} weight="duotone" className="ink-muted" />
+        </span>
       )}
 
       {photo.featured && (
         <span className="absolute left-1.5 top-1.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] text-white backdrop-blur">
-          ⭐
+          <StarIcon size={12} weight="fill" aria-hidden />
         </span>
       )}
 
       {photo.tripPlace && (
         <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-4 text-left text-[10px] font-medium text-white">
-          📍 {photo.tripPlace.place.name}
+          <PlaceIcon size={11} weight="fill" className="mr-0.5 inline align-[-1px]" aria-hidden />
+          {photo.tripPlace.place.name}
         </span>
       )}
     </button>

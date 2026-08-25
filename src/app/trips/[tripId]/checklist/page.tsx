@@ -1,5 +1,5 @@
-import { ChecklistView } from "@/components/checklist/ChecklistView";
+import { PreparationView } from "@/components/preparation/PreparationView";
 
 export default function ChecklistPage() {
-  return <ChecklistView />;
+  return <PreparationView />;
 }

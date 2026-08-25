@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { Photo, PublicProfile } from "@/core/models";
 import { formatDate } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
+import { AttachIcon, PlaceIcon, StarIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 
 export function PhotoLightbox({
@@ -71,19 +72,28 @@ export function PhotoLightbox({
           {photo.description && <p className="truncate font-medium">{photo.description}</p>}
           <p className="flex items-center gap-2 text-sm text-white/60">
             {uploader && <Avatar profile={uploader} size="xs" />}
-            {photo.tripPlace && <span>📍 {photo.tripPlace.place.name}</span>}
+            {photo.tripPlace && (
+              <span className="inline-flex items-center gap-1">
+                <PlaceIcon size={13} weight="fill" aria-hidden />
+                {photo.tripPlace.place.name}
+              </span>
+            )}
             <span>{formatDate(photo.takenAt ?? photo.createdAt, "long")}</span>
           </p>
         </div>
         <div className="flex gap-2">
           {onCreateRelated && (
             <Button variant="secondary" size="sm" onClick={() => onCreateRelated(photo)}>
-              📎 Hacer algo más
+              <AttachIcon size={15} weight="bold" aria-hidden />
+              Hacer algo más
             </Button>
           )}
           {onToggleFeatured && (
             <Button variant="secondary" size="sm" onClick={() => onToggleFeatured(photo)}>
-              {photo.featured ? "Quitar de destacadas" : "⭐ Destacar"}
+              <span className="inline-flex items-center gap-1.5">
+                <StarIcon size={15} weight={photo.featured ? "fill" : "regular"} aria-hidden />
+                {photo.featured ? "Quitar de destacadas" : "Destacar"}
+              </span>
             </Button>
           )}
           {onDelete && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { StarIcon, type Icon } from "./icons";
 
 export function Badge({
   children,
@@ -35,7 +36,7 @@ export function SegmentedControl<T extends string>({
 }: {
   value: T;
   onChange: (value: T) => void;
-  options: Array<{ value: T; label: string; count?: number }>;
+  options: Array<{ value: T; label: string; count?: number; Icon?: Icon }>;
   className?: string;
 }) {
   return (
@@ -50,12 +51,19 @@ export function SegmentedControl<T extends string>({
           aria-selected={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
             value === option.value
               ? "surface-1 ink-primary shadow-sm"
               : "ink-muted hover:ink-secondary",
           )}
         >
+          {option.Icon && (
+            <option.Icon
+              size={16}
+              weight={value === option.value ? "fill" : "regular"}
+              aria-hidden
+            />
+          )}
           {option.label}
           {option.count !== undefined && (
             <span className="ml-1.5 tabular-nums opacity-60">{option.count}</span>
@@ -121,12 +129,17 @@ export function Rating({
           onClick={() => onChange?.(star)}
           aria-label={`${star} de 5`}
           className={cn(
-            "text-lg leading-none transition-transform",
+            "leading-none transition-transform",
             !readOnly && "hover:scale-110",
             readOnly && "cursor-default",
           )}
         >
-          <span className={star <= (value ?? 0) ? "opacity-100" : "opacity-25"}>⭐</span>
+          <StarIcon
+            size={18}
+            weight={star <= (value ?? 0) ? "fill" : "regular"}
+            className={star <= (value ?? 0) ? "text-amber-400" : "ink-muted opacity-50"}
+            aria-hidden
+          />
         </button>
       ))}
     </div>

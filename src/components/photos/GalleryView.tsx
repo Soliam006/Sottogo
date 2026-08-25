@@ -12,6 +12,7 @@ import { usePhotos } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { GalleryIcon } from "@/components/ui/icons";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
@@ -117,7 +118,7 @@ export function GalleryView() {
 
       {photos.length === 0 ? (
         <EmptyState
-          icon="📸"
+          icon={GalleryIcon}
           title="La galería está vacía"
           description={
             hiddenCount > 0

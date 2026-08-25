@@ -94,7 +94,7 @@ export interface PlaceContent {
  * ocurrieron.
  *
  * Se calcula una sola vez y sirve para las dos cosas: el recuento del mapa
- * global ("📸 12") y los puntos del mapa de recuerdos. Asi el numero que ves
+ * global ("12 fotos") y los puntos del mapa de recuerdos. Asi el numero que ves
  * fuera y lo que encuentras dentro no pueden discrepar.
  */
 export function collectForPlace(
@@ -212,13 +212,23 @@ function clusterLabel(points: MemoryPoint[], photos: number, moments: number): s
   return parts.join(" · ");
 }
 
-/** Resumen "📸 12 · ✨ 4 · 💰 3" para el marcador del mapa global. */
-export function contentSummary(counts: PlaceContentCounts): string | null {
-  const parts: string[] = [];
-  if (counts.photos) parts.push(`📸 ${counts.photos}`);
-  if (counts.moments) parts.push(`✨ ${counts.moments}`);
-  if (counts.expenses) parts.push(`💰 ${counts.expenses}`);
-  return parts.length ? parts.join(" · ") : null;
+/** Una entrada del resumen de contenido de un lugar. */
+export interface ContentStat {
+  kind: "photos" | "moments" | "expenses";
+  count: number;
+}
+
+/**
+ * Resumen del contenido de un lugar como DATOS.
+ * Antes devolvia "📸 12 · ✨ 4 · 💰 3"; el icono es cosa de la UI, no del
+ * dominio, asi que aqui solo salen los pares tipo/cantidad.
+ */
+export function contentSummary(counts: PlaceContentCounts): ContentStat[] {
+  const stats: ContentStat[] = [];
+  if (counts.photos) stats.push({ kind: "photos", count: counts.photos });
+  if (counts.moments) stats.push({ kind: "moments", count: counts.moments });
+  if (counts.expenses) stats.push({ kind: "expenses", count: counts.expenses });
+  return stats;
 }
 
 export function hasContent(counts: PlaceContentCounts): boolean {

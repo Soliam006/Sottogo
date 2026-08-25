@@ -12,14 +12,14 @@ import { useItinerary } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { CloseIcon, ItineraryIcon, PlaceIcon, SearchIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Field, TextArea, TextInput } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PlacePicker } from "@/components/places/PlacePicker";
-
-const ICONS = ["📍", "🚆", "⛩️", "🍜", "🍣", "☕", "🎮", "🛍️", "🏨", "✈️", "🎟️", "🌸"];
+import { ITINERARY_ICONS, ItineraryItemIcon } from "@/components/ui/iconFor";
 
 export function ItineraryView() {
   const { trip } = useTrip();
@@ -68,7 +68,7 @@ export function ItineraryView() {
       {error && <ErrorState message={error} onRetry={() => void refresh()} />}
 
       {days.length === 0 ? (
-        <EmptyState icon="📅" title="Sin fechas" description="Revisa las fechas del viaje." />
+        <EmptyState icon={ItineraryIcon} title="Sin fechas" description="Revisa las fechas del viaje." />
       ) : (
         <div className="space-y-4">
           {days.map((day) => {
@@ -79,7 +79,8 @@ export function ItineraryView() {
               <Card key={day} className={isToday ? "border-brand-400 p-5" : "p-5"}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold uppercase tracking-wide ink-secondary">
-                    📅 {formatDate(day, "day")}
+                    <ItineraryIcon size={16} weight="fill" className="text-brand-500" aria-hidden />
+                    {formatDate(day, "day")}
                     {isToday && (
                       <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold uppercase text-brand-700 dark:bg-brand-900/60 dark:text-brand-200">
                         Hoy
@@ -102,13 +103,17 @@ export function ItineraryView() {
                         </span>
                         <span className="relative min-w-0 flex-1 border-l border-subtle pb-1 pl-4">
                           <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-brand-500" />
-                          <span className="block text-sm font-medium ink-primary">
-                            {item.icon ? `${item.icon} ` : ""}
-                            {item.title}
+                          <span className="flex items-center gap-1.5 text-sm font-medium ink-primary">
+                            <ItineraryItemIcon
+                              icon={item.icon}
+                              size={15}
+                              className="shrink-0 text-brand-500"
+                            />
+                            <span className="min-w-0">{item.title}</span>
                           </span>
                           {item.tripPlace && (
                             <span className="block text-xs ink-muted">
-                              📍 {item.tripPlace.place.name}
+                              {item.tripPlace.place.name}
                             </span>
                           )}
                           {item.description && (
@@ -120,7 +125,7 @@ export function ItineraryView() {
                           aria-label={`Eliminar ${item.title}`}
                           className="shrink-0 self-start rounded-lg p-1.5 ink-muted transition-opacity hover:text-rose-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                         >
-                          ✕
+                          <CloseIcon size={14} weight="bold" aria-hidden />
                         </button>
                       </li>
                     ))}
@@ -161,7 +166,7 @@ function ActivityModal({
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
-  const [icon, setIcon] = useState<string>("📍");
+  const [icon, setIcon] = useState<string>(ITINERARY_ICONS[0].key);
   const [startTime, setStartTime] = useState("");
   const [activityDate, setActivityDate] = useState(date);
   const [description, setDescription] = useState("");
@@ -223,7 +228,16 @@ function ActivityModal({
                 onClick={() => setPicking(true)}
                 className="flex-1 truncate rounded-xl border border-subtle px-3.5 py-2.5 text-left text-sm ink-primary hover:surface-2"
               >
-                {tripPlace ? `📍 ${tripPlace.place.name}` : "🔎 Buscar lugar…"}
+                <span className="inline-flex min-w-0 items-center gap-2">
+                {tripPlace ? (
+                  <PlaceIcon size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                ) : (
+                  <SearchIcon size={16} className="shrink-0" aria-hidden />
+                )}
+                <span className="truncate">
+                  {tripPlace ? tripPlace.place.name : "Buscar lugar…"}
+                </span>
+              </span>
               </button>
               {tripPlace && (
                 <Button variant="ghost" size="sm" onClick={() => setTripPlace(null)}>
@@ -247,18 +261,22 @@ function ActivityModal({
           <div className="space-y-1.5">
             <span className="block text-sm font-medium ink-secondary">Icono</span>
             <div className="flex flex-wrap gap-1.5">
-              {ICONS.map((option) => (
+              {ITINERARY_ICONS.map((option) => (
                 <button
-                  key={option}
+                  key={option.key}
                   type="button"
-                  onClick={() => setIcon(option)}
-                  aria-pressed={icon === option}
+                  onClick={() => setIcon(option.key)}
+                  aria-pressed={icon === option.key}
+                  aria-label={option.label}
+                  title={option.label}
                   className={
-                    "h-9 w-9 rounded-lg border text-base transition-colors " +
-                    (icon === option ? "border-brand-500 bg-brand-50 dark:bg-brand-900/40" : "border-subtle hover:surface-2")
+                    "flex h-9 w-9 items-center justify-center rounded-lg border transition-colors " +
+                    (icon === option.key
+                      ? "border-brand-500 bg-brand-50 text-brand-600 dark:bg-brand-900/40 dark:text-brand-300"
+                      : "border-subtle ink-secondary hover:surface-2")
                   }
                 >
-                  {option}
+                  <option.Icon size={18} weight={icon === option.key ? "fill" : "regular"} aria-hidden />
                 </button>
               ))}
             </div>

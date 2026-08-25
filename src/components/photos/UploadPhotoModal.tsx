@@ -22,6 +22,7 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Modal } from "@/components/ui/Modal";
+import { PlaceIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { Field, TextInput } from "@/components/ui/Field";
 import { PlacePicker } from "@/components/places/PlacePicker";
@@ -34,7 +35,7 @@ const PHOTO_RELATED: readonly RelatedTarget[] = ["moment", "expense"];
 /**
  * Subida de fotos. La ubicacion puede venir de un lugar del viaje, de una
  * busqueda real o de un punto del mapa: en los tres casos la foto queda
- * geolocalizada y aparece en el modo 📸 Fotos del mapa.
+ * geolocalizada y aparece en el mapa de recuerdos del viaje.
  */
 export function UploadPhotoModal({
   open,
@@ -138,10 +139,10 @@ export function UploadPhotoModal({
       const extra = await createRelatedContent(db, ctx, uploaded, related, PHOTO_RELATED);
 
       const parts = [
-        `📸 ${uploaded.length} foto${uploaded.length === 1 ? "" : "s"} subida${uploaded.length === 1 ? "" : "s"}`,
+        `${uploaded.length} foto${uploaded.length === 1 ? "" : "s"} subida${uploaded.length === 1 ? "" : "s"}`,
       ];
-      if (extra.moment) parts.push("✨ Momento creado");
-      if (extra.expense) parts.push("💰 Gasto creado");
+      if (extra.moment) parts.push("Momento creado");
+      if (extra.expense) parts.push("Gasto creado");
       toast(parts.join(" · "));
 
       onUploaded(uploaded);
@@ -200,7 +201,12 @@ export function UploadPhotoModal({
                 onClick={() => setPicking(true)}
                 className="flex-1 truncate rounded-xl border border-subtle px-3.5 py-2.5 text-left text-sm ink-primary hover:surface-2"
               >
-                {tripPlace ? `📍 ${tripPlace.place.name}` : "📍 Elegir lugar…"}
+                <span className="inline-flex min-w-0 items-center gap-2">
+                <PlaceIcon size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                <span className="truncate">
+                  {tripPlace ? tripPlace.place.name : "Elegir lugar…"}
+                </span>
+              </span>
               </button>
               {tripPlace && (
                 <Button variant="ghost" size="sm" onClick={() => setTripPlace(null)}>
@@ -239,7 +245,7 @@ export function UploadPhotoModal({
             onChange={setRelated}
             context={{ tripPlace, description, date: shotDate }}
             available={files.length > 0}
-            title="✨ Crear contenido relacionado"
+            title="Crear contenido relacionado"
             unavailableHint="Selecciona una imagen para poder crear un momento o un gasto con ella."
           />
 

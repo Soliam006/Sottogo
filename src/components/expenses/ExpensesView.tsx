@@ -14,6 +14,8 @@ import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { ExpenseIcon } from "@/components/ui/icons";
+import { CategoryIcon } from "@/components/ui/iconFor";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -108,7 +110,7 @@ export function ExpensesView() {
 
           {expenses.length === 0 ? (
             <EmptyState
-              icon="💰"
+              icon={ExpenseIcon}
               title="Sin gastos todavía"
               description="Registra el primero: importe, categoría, quién pagó y dónde."
               action={<Button onClick={() => setCreating(true)}>Añadir gasto</Button>}
@@ -125,10 +127,10 @@ export function ExpensesView() {
                 return (
                   <li key={expense.id} className="group flex items-center gap-3 py-3">
                     <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl surface-2 text-lg"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl surface-2 text-brand-600 dark:text-brand-300"
                       aria-hidden
                     >
-                      {meta.emoji}
+                      <CategoryIcon category={meta.id} size={20} />
                     </span>
 
                     <div className="min-w-0 flex-1">
@@ -137,7 +139,7 @@ export function ExpensesView() {
                         {payer && <Avatar profile={payer} size="xs" />}
                         <span className="truncate">
                           {payer?.name} · {formatDate(expense.date)}
-                          {expense.tripPlace ? ` · 📍 ${expense.tripPlace.place.name}` : ""}
+                          {expense.tripPlace ? ` · ${expense.tripPlace.place.name}` : ""}
                         </span>
                       </p>
                     </div>

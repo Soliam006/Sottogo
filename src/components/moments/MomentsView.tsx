@@ -25,6 +25,7 @@ import { useMoments, usePhotos } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { CheckIcon, CloseIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Field, TextArea, TextInput } from "@/components/ui/Field";
@@ -79,7 +80,7 @@ export function MomentsView() {
 
       {moments.length === 0 ? (
         <EmptyState
-          icon="✨"
+          icon={MomentIcon}
           title="Aún no hay momentos"
           description="“Nuestro primer ramen”, “el atardecer en Kioto”… guarda lo que te importa."
           action={<Button onClick={() => setCreating(true)}>Crear momento</Button>}
@@ -94,8 +95,8 @@ export function MomentsView() {
                     <h2 className="text-lg font-bold ink-primary">{moment.title}</h2>
                     <p className="mt-0.5 text-xs ink-muted">
                       {formatDate(moment.date, "long")}
-                      {moment.tripPlace ? ` · 📍 ${moment.tripPlace.place.name}` : ""}
-                      {moment.photos?.length ? ` · 📸 ${moment.photos.length}` : ""}
+                      {moment.tripPlace ? ` · ${moment.tripPlace.place.name}` : ""}
+                      {moment.photos?.length ? ` · ${moment.photos.length} foto${moment.photos.length === 1 ? "" : "s"}` : ""}
                     </p>
                   </div>
                   <button
@@ -103,7 +104,7 @@ export function MomentsView() {
                     aria-label="Eliminar momento"
                     className="rounded-lg p-1.5 ink-muted transition-colors hover:text-rose-600"
                   >
-                    ✕
+                    <CloseIcon size={16} weight="bold" aria-hidden />
                   </button>
                 </div>
 
@@ -263,9 +264,9 @@ function MomentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
         ? await createRelatedContent(db, ctx, [shared], related, MOMENT_RELATED)
         : { expense: null };
 
-      const parts = ["✨ Momento creado"];
-      if (shared && file && related.enabled.gallery) parts.push("📸 Foto en la galería");
-      if (extra.expense) parts.push("💰 Gasto creado");
+      const parts = ["Momento creado"];
+      if (shared && file && related.enabled.gallery) parts.push("Foto en la galería");
+      if (extra.expense) parts.push("Gasto creado");
       toast(parts.join(" · "));
       onSaved();
     } catch (err) {
@@ -335,7 +336,12 @@ function MomentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
               onClick={() => setPicking(true)}
               className="w-full truncate rounded-xl border border-subtle px-3.5 py-2.5 text-left text-sm ink-primary hover:surface-2"
             >
-              {tripPlace ? `📍 ${tripPlace.place.name}` : "📍 Elegir lugar…"}
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <PlaceIcon size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                <span className="truncate">
+                  {tripPlace ? tripPlace.place.name : "Elegir lugar…"}
+                </span>
+              </span>
             </button>
             <p className="text-xs ink-muted">Contexto general. La ubicación exacta va debajo.</p>
           </div>
@@ -392,8 +398,8 @@ function MomentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
                           className="h-full w-full object-cover"
                         />
                         {active && (
-                          <span className="absolute right-1 top-1 rounded-full bg-brand-600 px-1 text-[10px] text-white">
-                            ✓
+                          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-white">
+                            <CheckIcon size={11} weight="bold" aria-hidden />
                           </span>
                         )}
                       </button>

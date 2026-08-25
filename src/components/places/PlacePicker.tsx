@@ -10,6 +10,7 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Modal } from "@/components/ui/Modal";
+import { FavouriteIcon, VisitedIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { errorMessage } from "@/lib/errors";
@@ -125,7 +126,11 @@ export function PlacePicker({
                     }}
                     className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:surface-2"
                   >
-                    <span aria-hidden>{tp.status === "visited" ? "✅" : "❤️"}</span>
+                    {tp.status === "visited" ? (
+                      <VisitedIcon size={18} weight="fill" className="text-emerald-500" aria-hidden />
+                    ) : (
+                      <FavouriteIcon size={18} weight="fill" className="text-rose-400" aria-hidden />
+                    )}
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium ink-primary">
                         {tp.place.name}
@@ -154,7 +159,7 @@ export function PlacePicker({
               <MapCanvas
                 markers={
                   pending
-                    ? [{ id: "pending", ...pending, label: "Punto elegido", badge: "📌" }]
+                    ? [{ id: "pending", ...pending, label: "Punto elegido", badge: "pin" }]
                     : markers
                 }
                 initialCenter={center}

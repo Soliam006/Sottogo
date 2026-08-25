@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { cn } from "@/lib/cn";
+import type { Icon } from "./icons";
 
 export const inputClass =
   "w-full h-11 rounded-xl border border-subtle surface-1 px-3.5 text-sm ink-primary " +
@@ -64,14 +65,14 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 export function CheckboxCard({
   checked,
   onChange,
-  icon,
+  icon: Glyph,
   label,
   hint,
   children,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
-  icon?: string;
+  icon?: Icon;
   label: string;
   hint?: string;
   children?: React.ReactNode;
@@ -93,8 +94,10 @@ export function CheckboxCard({
           className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--brand-600,#4f46e5)]"
         />
         <span className="min-w-0">
-          <span className="block text-sm font-medium ink-primary">
-            {icon && <span aria-hidden>{icon} </span>}
+          <span className="flex items-center gap-1.5 text-sm font-medium ink-primary">
+            {Glyph && (
+              <Glyph size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+            )}
             {label}
           </span>
           {hint && <span className="mt-0.5 block text-xs ink-muted">{hint}</span>}

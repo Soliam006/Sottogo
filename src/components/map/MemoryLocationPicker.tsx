@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { reverseGeocode } from "@/services/api/places";
 import { useTrip } from "@/components/providers/TripProvider";
 import { Modal } from "@/components/ui/Modal";
+import { LocateIcon, MapIcon, SearchIcon } from "@/components/ui/icons";
 import { Button, Spinner } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { PlaceSearchInput } from "@/components/places/PlaceSearchInput";
@@ -16,7 +17,7 @@ import { MapCanvas } from "./MapCanvas";
 type Tab = "current" | "search" | "map";
 
 /**
- * "📍 ¿Dónde ocurrió?" — ubicacion EXACTA de una foto o un momento.
+ * "¿Dónde ocurrió?" — ubicacion EXACTA de una foto o un momento.
  *
  * A diferencia de `PlacePicker`, este selector NO crea un lugar del itinerario
  * ni exige que exista un `Place`: devuelve coordenadas y, como mucho, un nombre.
@@ -27,11 +28,13 @@ export function MemoryLocationPicker({
   onClose,
   onSelect,
   title = "¿Dónde ocurrió?",
+  description = "La ubicación exacta del recuerdo. No hace falta que sea un lugar del itinerario.",
 }: {
   open: boolean;
   onClose: () => void;
   onSelect: (location: MemoryLocation) => void;
   title?: string;
+  description?: string;
 }) {
   const { center } = useTrip();
 
@@ -122,7 +125,7 @@ export function MemoryLocationPicker({
       open={open}
       onClose={onClose}
       title={title}
-      description="La ubicación exacta del recuerdo. No hace falta que sea un lugar del itinerario."
+      description={description}
       size="lg"
       footer={
         tab === "map" ? (
@@ -149,9 +152,9 @@ export function MemoryLocationPicker({
             setError(null);
           }}
           options={[
-            { value: "current", label: "📡 Mi ubicación" },
-            { value: "search", label: "🔎 Buscar" },
-            { value: "map", label: "🗺️ En el mapa" },
+            { value: "current", label: "Mi ubicación", Icon: LocateIcon },
+            { value: "search", label: "Buscar", Icon: SearchIcon },
+            { value: "map", label: "En el mapa", Icon: MapIcon },
           ]}
         />
 
@@ -161,7 +164,8 @@ export function MemoryLocationPicker({
               Usa el GPS del dispositivo para guardar el punto exacto donde estás.
             </p>
             <Button onClick={useCurrentLocation} loading={busy}>
-              📡 Usar mi ubicación actual
+              <LocateIcon size={16} weight="bold" aria-hidden />
+              Usar mi ubicación actual
             </Button>
             <p className="text-xs ink-muted">
               El navegador te pedirá permiso. Si lo deniegas, puedes buscar el sitio o marcarlo

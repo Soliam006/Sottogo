@@ -8,6 +8,7 @@ import {
   collectForPlace,
   contentSummary,
   hasContent,
+  type ContentStat,
   type MemoryCluster,
   type PlaceContent,
   type PlaceContentCounts,
@@ -16,11 +17,13 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { useTrip } from "@/components/providers/TripProvider";
 import { useExpenses, useMoments, usePhotos } from "@/hooks/useTripCollections";
 import { Avatar } from "@/components/ui/Avatar";
+import { BackIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { Rating, SegmentedControl } from "@/components/ui/Misc";
 import { PhotoLightbox } from "@/components/photos/PhotoLightbox";
 import { PlacePicker } from "@/components/places/PlacePicker";
 import { MapCanvas, type MapMarkerData } from "./MapCanvas";
+import type { MarkerGlyph } from "./markerGlyphs";
 
 /** Filtro del mapa global. Conserva el conmutador que ya existia. */
 type Mode = "places" | "photos";
@@ -35,6 +38,13 @@ type Mode = "places" | "photos";
 type View = { level: "global" } | { level: "memories"; tripPlaceId: string };
 
 const EMPTY_CONTENT: PlaceContent = { photos: [], moments: [], located: [], unlocated: 0 };
+
+/** Tipo de contenido -> icono del marcador. */
+const STAT_GLYPH = {
+  photos: "photo",
+  moments: "moment",
+  expenses: "expense",
+} as const satisfies Record<ContentStat["kind"], MarkerGlyph>;
 
 /**
  * Vista principal del mapa: el mapa ocupa la pantalla y las tarjetas flotan
@@ -105,9 +115,14 @@ export function TripMapView() {
           latitude: tp.place.latitude,
           longitude: tp.place.longitude,
           label: tp.place.name,
-          sublabel: contentSummary(countsFor(tp.id)) ?? tp.place.city,
+          // Icono + numero por tipo de contenido; si no hay nada, la ciudad.
+          stats: contentSummary(countsFor(tp.id)).map((stat) => ({
+            glyph: STAT_GLYPH[stat.kind],
+            count: stat.count,
+          })),
+          sublabel: tp.place.city,
           imageUrl: content?.photos[0]?.thumbUrl ?? null,
-          badge: tp.status === "visited" ? "✅" : "📍",
+          badge: tp.status === "visited" ? "visited" : "place",
           variant: "pill",
           active: tp.id === selectedId,
         };
@@ -137,7 +152,7 @@ export function TripMapView() {
         longitude: cluster.longitude,
         label: cluster.label,
         imageUrl: cluster.thumbUrl,
-        badge: cluster.photoCount === 0 ? "✨" : "📸",
+        badge: cluster.photoCount === 0 ? "moment" : "photo",
         count: cluster.points.length,
         variant: "memory",
         active: cluster.points.some((p) => p.id === selectedPointId),
@@ -209,10 +224,12 @@ export function TripMapView() {
         {isMemories ? (
           <div className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-xl surface-1-blur p-1.5 shadow-lg backdrop-blur">
             <Button variant="secondary" size="sm" onClick={backToGlobal}>
-              ← Mapa del viaje
+              <BackIcon size={14} weight="bold" aria-hidden />
+              Mapa del viaje
             </Button>
             <span className="min-w-0 truncate pr-1 text-sm font-semibold ink-primary">
-              📍 {activePlace.place.name}
+              <PlaceIcon size={14} weight="fill" className="mr-1 inline align-[-2px] text-brand-500" aria-hidden />
+              {activePlace.place.name}
             </span>
           </div>
         ) : (
@@ -224,8 +241,8 @@ export function TripMapView() {
                 setSelectedId(null);
               }}
               options={[
-                { value: "places", label: "📍 Lugares", count: tripPlaces.length },
-                { value: "photos", label: "✨ Con recuerdos", count: placesWithContent.length },
+                { value: "places", label: "Lugares", Icon: PlaceIcon, count: tripPlaces.length },
+                { value: "photos", label: "Con recuerdos", Icon: MomentIcon, count: placesWithContent.length },
               ]}
               className="bg-transparent"
             />
@@ -365,7 +382,8 @@ function PlaceCard({
         {!exploring && content.located.length > 0 && (
           <div className="mt-3 px-4">
             <Button className="w-full" onClick={onExplore}>
-              ✨ Explorar recuerdos ({content.located.length})
+              <MomentIcon size={16} weight="fill" aria-hidden />
+              Explorar recuerdos ({content.located.length})
             </Button>
           </div>
         )}
@@ -449,7 +467,10 @@ function MemoryCard({
           <ul className="mt-3 space-y-2 px-4">
             {moments.map((moment) => (
               <li key={moment.id} className="rounded-xl surface-2 px-3 py-2">
-                <p className="text-sm font-semibold ink-primary">✨ {moment.title}</p>
+                <p className="flex items-center gap-1.5 text-sm font-semibold ink-primary">
+                  <MomentIcon size={14} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                  <span className="min-w-0 truncate">{moment.title}</span>
+                </p>
                 {moment.description && (
                   <p className="mt-0.5 text-xs ink-secondary">{moment.description}</p>
                 )}

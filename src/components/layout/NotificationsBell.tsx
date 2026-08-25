@@ -10,6 +10,7 @@ import { invitationsRepo } from "@/services/repositories";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
+import { NotificationIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/States";
 
@@ -110,7 +111,7 @@ export function NotificationsBell() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Notificaciones">
         {count === 0 ? (
-          <EmptyState icon="🔔" title="Todo al día" description="No tienes invitaciones pendientes." />
+          <EmptyState icon={NotificationIcon} title="Todo al día" description="No tienes invitaciones pendientes." />
         ) : (
           <ul className="space-y-3">
             {invitations.map((invitation) => (

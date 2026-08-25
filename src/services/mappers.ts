@@ -6,6 +6,7 @@
  * tipos con `supabase gen types typescript`, solo cambia este fichero.
  */
 import type {
+  Booking,
   ChecklistItem,
   Expense,
   ItineraryItem,
@@ -210,6 +211,28 @@ export function toMoment(row: Row): Moment {
     createdAt: str(row.created_at),
     tripPlace: row.trip_place ? toTripPlace(row.trip_place as Row) : null,
     photos: links.map((link) => toPhoto((link.photo as Row) ?? {})),
+  };
+}
+
+export function toBooking(row: Row): Booking {
+  return {
+    id: str(row.id),
+    tripId: str(row.trip_id),
+    createdBy: strOrNull(row.created_by),
+    kind: (row.kind as Booking["kind"]) ?? "flight",
+    provider: str(row.provider),
+    code: strOrNull(row.code),
+    reference: strOrNull(row.reference),
+    startAt: strOrNull(row.start_at),
+    endAt: strOrNull(row.end_at),
+    fromLabel: strOrNull(row.from_label),
+    fromPlaceId: strOrNull(row.from_place_id),
+    fromTerminal: strOrNull(row.from_terminal),
+    toLabel: strOrNull(row.to_label),
+    toPlaceId: strOrNull(row.to_place_id),
+    toTerminal: strOrNull(row.to_terminal),
+    notes: strOrNull(row.notes),
+    createdAt: str(row.created_at),
   };
 }
 

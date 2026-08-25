@@ -6,13 +6,14 @@ import { describeLocation, type MemoryLocation } from "@/core/map/location";
 import { formatDistance, nearest } from "@/core/map/geo";
 import { useTrip } from "@/components/providers/TripProvider";
 import { Button } from "@/components/ui/Button";
+import { PlaceIcon } from "@/components/ui/icons";
 import { MemoryLocationPicker } from "./MemoryLocationPicker";
 
 /** Radio dentro del cual proponemos (nunca imponemos) un lugar del itinerario. */
 const SUGGEST_RADIUS_M = 1_500;
 
 /**
- * Campo "📍 ¿Dónde ocurrió?" reutilizable por los modales de foto y momento.
+ * Campo "¿Dónde ocurrió?" reutilizable por los modales de foto y momento.
  *
  * Mantiene separados los dos conceptos que pide el modelo:
  *   - `value`      -> ubicacion EXACTA del recuerdo (coordenadas propias).
@@ -55,7 +56,10 @@ export function MemoryLocationField({
   return (
     <>
       <div className="space-y-1.5">
-        <span className="block text-sm font-medium ink-secondary">📍 {label}</span>
+        <span className="flex items-center gap-1.5 text-sm font-medium ink-secondary">
+          <PlaceIcon size={15} weight="fill" className="text-brand-500" aria-hidden />
+          {label}
+        </span>
 
         <div className="flex items-center gap-2">
           <button

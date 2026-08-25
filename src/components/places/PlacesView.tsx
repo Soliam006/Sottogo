@@ -12,6 +12,7 @@ import { useExpenses, usePhotos } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { ExpenseIcon, FavouriteIcon, MapIcon, PhotoIcon, PlaceIcon, VisitedIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, LoadingState } from "@/components/ui/States";
 import { ProgressBar, Rating, SegmentedControl } from "@/components/ui/Misc";
@@ -107,14 +108,14 @@ export function PlacesView() {
         onChange={setFilter}
         options={[
           { value: "all", label: "Todos", count: tripPlaces.length },
-          { value: "wishlist", label: "❤️ Quiero visitar", count: tripPlaces.length - visitedCount },
-          { value: "visited", label: "✅ Visitados", count: visitedCount },
+          { value: "wishlist", label: "Quiero visitar", Icon: FavouriteIcon, count: tripPlaces.length - visitedCount },
+          { value: "visited", label: "Visitados", Icon: VisitedIcon, count: visitedCount },
         ]}
       />
 
       {filtered.length === 0 ? (
         <EmptyState
-          icon="📍"
+          icon={PlaceIcon}
           title="Ningún lugar aquí"
           description="Busca un lugar real (Senso-ji, Akihabara…) y añádelo al viaje."
           action={<Button onClick={() => setAdding(true)}>Buscar lugar</Button>}
@@ -134,14 +135,14 @@ export function PlacesView() {
                       <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
                     ) : (
                       <span className="flex h-full items-center justify-center text-3xl" aria-hidden>
-                        🗺️
+                        <MapIcon size={28} weight="duotone" className="ink-muted" aria-hidden />
                       </span>
                     )}
                     <button
                       onClick={() => void toggleStatus(tripPlace)}
                       className="absolute right-2 top-2 rounded-full bg-black/50 px-2.5 py-1 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-black/70"
                     >
-                      {tripPlace.status === "visited" ? "✅ Visitado" : "❤️ Pendiente"}
+                      {tripPlace.status === "visited" ? "Visitado" : "Pendiente"}
                     </button>
                   </div>
 
@@ -154,7 +155,8 @@ export function PlacesView() {
                     </div>
 
                     <p className="text-xs ink-muted">
-                      📸 {stat?.photos ?? 0} · 💰{" "}
+                      <PhotoIcon size={13} weight="fill" className="inline align-[-2px]" aria-hidden />{" "}
+                      {stat?.photos ?? 0} · <ExpenseIcon size={13} weight="fill" className="inline align-[-2px]" aria-hidden />{" "}
                       {formatMoney(stat?.spent ?? 0, trip?.baseCurrency ?? "EUR", { compact: true })}
                       {tripPlace.visitedAt ? ` · ${formatDate(tripPlace.visitedAt)}` : ""}
                     </p>

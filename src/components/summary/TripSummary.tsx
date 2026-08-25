@@ -7,13 +7,15 @@ import { daysBetween, flagEmoji, formatDate, formatMoney } from "@/lib/format";
 import { useTrip } from "@/components/providers/TripProvider";
 import { useExpenses, useMoments, usePhotos } from "@/hooks/useTripCollections";
 import { Card } from "@/components/ui/Card";
+import { ExpenseIcon, FavouriteIcon, GalleryIcon, Icon, ImageIcon, MapIcon, MedalAwardIcon, PlaceIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/States";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { PhotoTile } from "@/components/photos/PhotoGrid";
 import { PhotoLightbox } from "@/components/photos/PhotoLightbox";
 import { CategoryBars } from "@/components/expenses/CategoryBars";
 
-const MEDALS = ["🥇", "🥈", "🥉"];
+/** Tonos del podio: la medalla es la misma, cambia el color. */
+const MEDAL_TONES = ["text-amber-400", "text-slate-400", "text-amber-700"];
 
 /**
  * "Resumen del viaje": la pantalla-recuerdo. Solo lectura, muy visual.
@@ -87,18 +89,18 @@ export function TripSummary() {
         <p className="mt-1 text-2xl font-bold">{daysBetween(trip.startDate, trip.endDate)} días</p>
 
         <dl className="mt-8 grid grid-cols-3 gap-3 text-left sm:gap-6">
-          <HeroStat label="Lugares visitados" value={String(visited)} icon="📍" />
-          <HeroStat label="Recuerdos" value={String((photos ?? []).length)} icon="📸" />
+          <HeroStat label="Lugares visitados" value={String(visited)} icon={PlaceIcon} />
+          <HeroStat label="Recuerdos" value={String((photos ?? []).length)} icon={GalleryIcon} />
           <HeroStat
             label="Gastado"
             value={formatMoney(total, trip.baseCurrency, { compact: true })}
-            icon="💰"
+            icon={ExpenseIcon}
           />
         </dl>
       </section>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold ink-primary">❤️ Momentos favoritos</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><FavouriteIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Momentos favoritos</h2>
         <p className="mt-0.5 text-sm ink-muted">Los lugares donde más habéis vivido.</p>
 
         {ranking.length === 0 ? (
@@ -109,7 +111,12 @@ export function TripSummary() {
           <ol className="mt-4 space-y-2">
             {ranking.map((entry, index) => (
               <li key={entry.name} className="flex items-center gap-3 rounded-xl surface-2 px-4 py-3">
-                <span className="text-xl" aria-hidden>{MEDALS[index]}</span>
+                <MedalAwardIcon
+                  size={22}
+                  weight="fill"
+                  className={MEDAL_TONES[index] ?? "ink-muted"}
+                  aria-hidden
+                />
                 <span className="flex-1 truncate font-medium ink-primary">{entry.name}</span>
                 <span className="text-sm tabular-nums ink-muted">
                   {entry.count} momento{entry.count === 1 ? "" : "s"}
@@ -121,13 +128,13 @@ export function TripSummary() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold ink-primary">📸 Tus recuerdos</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><GalleryIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Tus recuerdos</h2>
         <p className="mt-0.5 text-sm ink-muted">
-          Marca fotos como destacadas ⭐ en la galería para elegir las que aparecen aquí.
+          Marca fotos como destacadas en la galería para elegir las que aparecen aquí.
         </p>
 
         {featured.length === 0 ? (
-          <EmptyState icon="🖼️" title="Sin fotos todavía" className="mt-4 border-0" />
+          <EmptyState icon={ImageIcon} title="Sin fotos todavía" className="mt-4 border-0" />
         ) : (
           <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {featured.slice(0, 8).map((photo) => (
@@ -140,7 +147,7 @@ export function TripSummary() {
       </Card>
 
       <Card className="overflow-hidden">
-        <h2 className="px-6 pt-6 text-base font-semibold ink-primary">🗺️ Tu ruta</h2>
+        <h2 className="flex items-center gap-2 px-6 pt-6 text-base font-semibold ink-primary"><MapIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Tu ruta</h2>
         <div className="mt-4 h-80">
           {markers.length ? (
             <MapCanvas markers={markers} initialCenter={center} showControls={false} />
@@ -153,7 +160,7 @@ export function TripSummary() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold ink-primary">💰 Tus gastos</h2>
+        <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><ExpenseIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Tus gastos</h2>
         <p className="mt-1 text-3xl font-bold tabular-nums ink-primary">
           {formatMoney(total, trip.baseCurrency)}
         </p>
@@ -178,11 +185,12 @@ export function TripSummary() {
   );
 }
 
-function HeroStat({ label, value, icon }: { label: string; value: string; icon: string }) {
+function HeroStat({ label, value, icon: Glyph }: { label: string; value: string; icon: Icon }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-white/60">
-        <span aria-hidden>{icon}</span> {label}
+      <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-white/60">
+        <Glyph size={14} weight="fill" aria-hidden />
+        {label}
       </dt>
       <dd className="mt-1 text-2xl font-bold tabular-nums sm:text-3xl">{value}</dd>
     </div>

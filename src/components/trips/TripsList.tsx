@@ -10,6 +10,7 @@ import { useAsyncData } from "@/hooks/useAsyncData";
 import { useSession } from "@/components/providers/SessionProvider";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/Button";
+import { TripIcon } from "@/components/ui/icons";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { CreateTripModal } from "./CreateTripModal";
 
@@ -50,7 +51,7 @@ export function TripsList() {
             <ErrorState message={error} onRetry={() => void refresh()} />
           ) : trips.length === 0 ? (
             <EmptyState
-              icon="🧳"
+              icon={TripIcon}
               title="Todavía no tienes ningún viaje"
               description="Crea tu primer viaje y empieza a añadir lugares, gastos y recuerdos."
               action={<Button onClick={() => setCreating(true)}>Crear mi primer viaje</Button>}

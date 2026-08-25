@@ -54,6 +54,18 @@ export function formatDateRange(start: string, end: string): string {
   return `${left} → ${right}`;
 }
 
+/** "12 mar, 08:45" — para salidas, llegadas, check-in… */
+export function formatDateTime(iso: string | null): string {
+  const date = parseISODate(iso ?? "");
+  if (!date) return "";
+  return new Intl.DateTimeFormat(LOCALE, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export function formatTime(time: string | null): string {
   if (!time) return "";
   return time.slice(0, 5);

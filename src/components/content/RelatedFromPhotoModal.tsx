@@ -100,9 +100,9 @@ export function RelatedFromPhotoModal({
       const extra = await createRelatedContent(db, ctx, [shared], draft, offered);
 
       const parts: string[] = [];
-      if (!photo.inGallery && draft.enabled.gallery) parts.push("📸 Foto en la galería");
-      if (extra.moment) parts.push("✨ Momento creado");
-      if (extra.expense) parts.push("💰 Gasto creado");
+      if (!photo.inGallery && draft.enabled.gallery) parts.push("Foto en la galería");
+      if (extra.moment) parts.push("Momento creado");
+      if (extra.expense) parts.push("Gasto creado");
       toast(parts.join(" · "));
 
       onDone?.();
@@ -145,7 +145,7 @@ export function RelatedFromPhotoModal({
               {photo.description || "Foto del viaje"}
             </p>
             <p className="truncate text-xs ink-muted">
-              {photo.tripPlace ? `📍 ${photo.tripPlace.place.name} · ` : ""}
+              {photo.tripPlace ? `${photo.tripPlace.place.name} · ` : ""}
               {photoContext.date}
             </p>
           </div>

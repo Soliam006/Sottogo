@@ -202,6 +202,34 @@ export interface Moment {
   author?: PublicProfile;
 }
 
+/** Vuelo, alojamiento o coche de alquiler. Ver `src/core/bookings`. */
+export type BookingKind = "flight" | "stay" | "car";
+
+export interface Booking {
+  id: UUID;
+  tripId: UUID;
+  createdBy: UUID | null;
+  kind: BookingKind;
+  /** Aerolinea / nombre del hotel / compania de alquiler. */
+  provider: string;
+  /** Numero de vuelo. Solo lo usan los vuelos. */
+  code: string | null;
+  /** Localizador de la reserva. */
+  reference: string | null;
+  /** Salida / check-in / recogida. */
+  startAt: ISODateTime | null;
+  /** Llegada / check-out / devolucion. */
+  endAt: ISODateTime | null;
+  fromLabel: string | null;
+  fromPlaceId: UUID | null;
+  fromTerminal: string | null;
+  toLabel: string | null;
+  toPlaceId: UUID | null;
+  toTerminal: string | null;
+  notes: string | null;
+  createdAt: ISODateTime;
+}
+
 export interface ChecklistItem {
   id: UUID;
   tripId: UUID;

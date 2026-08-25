@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback } from "react";
-import type { ChecklistItem, Expense, ItineraryItem, Moment, Photo } from "@/core/models";
+import type { Booking, ChecklistItem, Expense, ItineraryItem, Moment, Photo } from "@/core/models";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import {
+  bookingsRepo,
   checklistRepo,
   expensesRepo,
   itineraryRepo,
@@ -63,6 +64,17 @@ export function useMoments(tripId: string): AsyncState<Moment[]> {
 
   const state = useAsyncData<Moment[]>(load, [tripId]);
   useRealtimeTables(tripId, ["moments"], () => void state.refresh());
+  return state;
+}
+
+/** Vuelos, alojamientos y coches del viaje, en tiempo real. */
+export function useBookings(tripId: string): AsyncState<Booking[]> {
+  const load = useCallback(
+    () => bookingsRepo.listByTrip(getSupabaseBrowserClient(), tripId),
+    [tripId],
+  );
+  const state = useAsyncData<Booking[]>(load, [tripId]);
+  useRealtimeTables(tripId, ["trip_bookings"], () => void state.refresh());
   return state;
 }
 

@@ -6,6 +6,7 @@ import { searchPlaces } from "@/services/api/places";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { errorMessage } from "@/lib/errors";
 import { inputClass } from "@/components/ui/Field";
+import { PlaceIcon, SearchIcon } from "@/components/ui/icons";
 import { Spinner } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -71,7 +72,7 @@ export function PlaceSearchInput({
     <div className="space-y-3">
       <div className="relative">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-base" aria-hidden>
-          🔎
+          <SearchIcon size={16} weight="bold" aria-hidden />
         </span>
         <input
           value={query}
@@ -108,7 +109,7 @@ export function PlaceSearchInput({
                 onClick={() => onSelect(result)}
                 className="flex w-full items-start gap-3 px-3.5 py-3 text-left transition-colors hover:surface-2"
               >
-                <span className="mt-0.5 text-base" aria-hidden>📍</span>
+                <PlaceIcon size={18} weight="fill" className="mt-0.5 shrink-0 text-brand-500" aria-hidden />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium ink-primary">{result.name}</span>
                   {result.address && (

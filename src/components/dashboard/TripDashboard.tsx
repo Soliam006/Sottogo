@@ -7,7 +7,9 @@ import { daysBetween, flagEmoji, formatDate, formatDateRange, formatMoney, forma
 import { useTrip } from "@/components/providers/TripProvider";
 import { useExpenses, useItinerary, useMoments, usePhotos } from "@/hooks/useTripCollections";
 import { AvatarStack } from "@/components/ui/Avatar";
+import { ExpenseIcon, GalleryIcon, Icon, ItineraryIcon, MapIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
+import { ItineraryItemIcon } from "@/components/ui/iconFor";
 import { ProgressBar } from "@/components/ui/Misc";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { PhotoTile } from "@/components/photos/PhotoGrid";
@@ -81,17 +83,17 @@ export function TripDashboard() {
 
       {/* Metricas */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard href={`/trips/${trip.id}/expenses`} icon="💰" label="Gastos" value={formatMoney(total, trip.baseCurrency, { compact: true })} />
-        <MetricCard href={`/trips/${trip.id}/gallery`} icon="📸" label="Fotos" value={String((photos ?? []).length)} />
-        <MetricCard href={`/trips/${trip.id}/places`} icon="📍" label="Lugares" value={`${visited} / ${tripPlaces.length}`} />
-        <MetricCard href={`/trips/${trip.id}/moments`} icon="✨" label="Momentos" value={String((moments ?? []).length)} />
+        <MetricCard href={`/trips/${trip.id}/expenses`} icon={ExpenseIcon} label="Gastos" value={formatMoney(total, trip.baseCurrency, { compact: true })} />
+        <MetricCard href={`/trips/${trip.id}/gallery`} icon={GalleryIcon} label="Fotos" value={String((photos ?? []).length)} />
+        <MetricCard href={`/trips/${trip.id}/places`} icon={PlaceIcon} label="Lugares" value={`${visited} / ${tripPlaces.length}`} />
+        <MetricCard href={`/trips/${trip.id}/moments`} icon={MomentIcon} label="Momentos" value={String((moments ?? []).length)} />
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         {/* Mapa */}
         <Card className="overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5">
-            <h2 className="text-base font-semibold ink-primary">🗺️ Tu mapa</h2>
+            <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><MapIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Tu mapa</h2>
             <Link href={`/trips/${trip.id}/map`} className="text-sm font-medium text-brand-600 hover:underline">
               Ver completo
             </Link>
@@ -111,7 +113,7 @@ export function TripDashboard() {
           {/* Proximo */}
           <Card className="p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold ink-primary">📅 Próximo</h2>
+              <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><ItineraryIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Próximo</h2>
               <Link href={`/trips/${trip.id}/itinerary`} className="text-sm font-medium text-brand-600 hover:underline">
                 Itinerario
               </Link>
@@ -127,13 +129,17 @@ export function TripDashboard() {
                       {formatTime(item.startTime) || "—"}
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium ink-primary">
-                        {item.icon ? `${item.icon} ` : ""}
-                        {item.title}
+                      <span className="flex items-center gap-1.5 text-sm font-medium ink-primary">
+                        <ItineraryItemIcon
+                          icon={item.icon}
+                          size={14}
+                          className="shrink-0 text-brand-500"
+                        />
+                        <span className="min-w-0 truncate">{item.title}</span>
                       </span>
                       <span className="block truncate text-xs ink-muted">
                         {formatDate(item.date, "day")}
-                        {item.tripPlace ? ` · 📍 ${item.tripPlace.place.name}` : ""}
+                        {item.tripPlace ? ` · ${item.tripPlace.place.name}` : ""}
                       </span>
                     </span>
                   </li>
@@ -144,7 +150,7 @@ export function TripDashboard() {
 
           {/* Progreso de lugares */}
           <Card className="p-5">
-            <h2 className="text-base font-semibold ink-primary">📍 Lugares</h2>
+            <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><PlaceIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Lugares</h2>
             <div className="mt-4">
               <ProgressBar value={visited} total={tripPlaces.length} label="Visitados" />
             </div>
@@ -155,7 +161,7 @@ export function TripDashboard() {
       {/* Ultimos momentos */}
       <Card className="p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold ink-primary">✨ Últimos momentos</h2>
+          <h2 className="flex items-center gap-2 text-base font-semibold ink-primary"><MomentIcon size={18} weight="fill" className="text-brand-500" aria-hidden />Últimos momentos</h2>
           <Link href={`/trips/${trip.id}/moments`} className="text-sm font-medium text-brand-600 hover:underline">
             Ver todos
           </Link>
@@ -172,7 +178,7 @@ export function TripDashboard() {
                 <p className="font-semibold ink-primary">{moment.title}</p>
                 <p className="mt-0.5 text-xs ink-muted">
                   {formatDate(moment.date, "long")}
-                  {moment.tripPlace ? ` · 📍 ${moment.tripPlace.place.name}` : ""}
+                  {moment.tripPlace ? ` · ${moment.tripPlace.place.name}` : ""}
                 </p>
                 {moment.photos && moment.photos.length > 0 && (
                   <div className="mt-3 grid grid-cols-3 gap-1.5">
@@ -192,12 +198,12 @@ export function TripDashboard() {
 
 function MetricCard({
   href,
-  icon,
+  icon: Glyph,
   label,
   value,
 }: {
   href: string;
-  icon: string;
+  icon: Icon;
   label: string;
   value: string;
 }) {
@@ -206,8 +212,9 @@ function MetricCard({
       href={href}
       className="rounded-2xl border border-subtle surface-1 p-4 transition-transform hover:-translate-y-0.5 hover:shadow-md"
     >
-      <p className="text-sm ink-muted">
-        <span aria-hidden>{icon}</span> {label}
+      <p className="flex items-center gap-1.5 text-sm ink-muted">
+        <Glyph size={16} weight="fill" className="text-brand-500" aria-hidden />
+        {label}
       </p>
       <p className="mt-1 truncate text-2xl font-bold tabular-nums ink-primary">{value}</p>
     </Link>

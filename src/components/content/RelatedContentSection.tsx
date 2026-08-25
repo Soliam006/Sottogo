@@ -13,8 +13,10 @@ import {
 } from "@/core/content/related";
 import { useTrip } from "@/components/providers/TripProvider";
 import { Button } from "@/components/ui/Button";
+import { AttachIcon, ExpenseIcon, GalleryIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
 import { CheckboxCard, Field, Select, TextArea, TextInput } from "@/components/ui/Field";
 import { Rating } from "@/components/ui/Misc";
+import { CategoryIcon } from "@/components/ui/iconFor";
 import { PlacePicker } from "@/components/places/PlacePicker";
 
 /**
@@ -88,7 +90,10 @@ export function RelatedContentSection({
     <>
       <section className="space-y-3 rounded-2xl border border-dashed border-subtle p-3.5">
         <header>
-          <h3 className="text-sm font-semibold ink-primary">📎 {title}</h3>
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold ink-primary">
+            <AttachIcon size={15} weight="bold" className="text-brand-500" aria-hidden />
+            {title}
+          </h3>
           <p className="mt-0.5 text-xs ink-muted">
             {available
               ? "Opcional. Se reutiliza la misma imagen: no se sube dos veces."
@@ -102,7 +107,7 @@ export function RelatedContentSection({
               <CheckboxCard
                 checked={draft.enabled.gallery}
                 onChange={(v) => setEnabled("gallery", v)}
-                icon="📸"
+                icon={GalleryIcon}
                 label="Añadir también a la Galería"
                 hint="La misma foto aparecerá en la galería del viaje."
               />
@@ -112,7 +117,7 @@ export function RelatedContentSection({
               <CheckboxCard
                 checked={draft.enabled.moment}
                 onChange={(v) => setEnabled("moment", v)}
-                icon="✨"
+                icon={MomentIcon}
                 label="Crear un Momento con esta foto"
                 hint="La foto queda asociada al nuevo momento."
               >
@@ -169,7 +174,7 @@ export function RelatedContentSection({
               <CheckboxCard
                 checked={draft.enabled.expense}
                 onChange={(v) => setEnabled("expense", v)}
-                icon="💰"
+                icon={ExpenseIcon}
                 label="Crear un Gasto con esta foto"
                 hint="La foto queda como justificante del gasto."
               >
@@ -225,13 +230,14 @@ export function RelatedContentSection({
                         onClick={() => patchExpense({ category: c.id as ExpenseCategory })}
                         aria-pressed={draft.expense.category === c.id}
                         className={
-                          "rounded-full border px-3 py-1.5 text-sm transition-colors " +
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors " +
                           (draft.expense.category === c.id
                             ? "border-brand-500 bg-brand-50 font-medium text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
                             : "border-subtle ink-secondary hover:surface-2")
                         }
                       >
-                        <span aria-hidden>{c.emoji}</span> {c.label}
+                        <CategoryIcon category={c.id} size={16} className="shrink-0" />
+                        {c.label}
                       </button>
                     ))}
                   </div>
@@ -308,7 +314,12 @@ function PlaceRow({
           onClick={onPick}
           className="flex-1 truncate rounded-xl border border-subtle px-3.5 py-2.5 text-left text-sm ink-primary hover:surface-2"
         >
-          {tripPlace ? `📍 ${tripPlace.place.name}` : "📍 Elegir lugar…"}
+          <span className="inline-flex min-w-0 items-center gap-2">
+                <PlaceIcon size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                <span className="truncate">
+                  {tripPlace ? tripPlace.place.name : "Elegir lugar…"}
+                </span>
+              </span>
         </button>
         {tripPlace && (
           <Button variant="ghost" size="sm" onClick={onClear}>

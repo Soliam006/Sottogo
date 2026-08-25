@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CategoryTotal } from "@/core/expenses/balance";
 import { categoryMeta, EXPENSE_CATEGORIES } from "@/core/expenses/categories";
 import { formatMoney } from "@/lib/format";
+import { CategoryIcon } from "@/components/ui/iconFor";
 
 /**
  * Gastos por categoria: barras horizontales, una sola serie, con etiqueta
@@ -44,7 +45,7 @@ export function CategoryBars({
           >
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="flex min-w-0 items-center gap-1.5 ink-secondary">
-                <span aria-hidden>{meta.emoji}</span>
+                <CategoryIcon category={meta.id} size={16} />
                 <span className="truncate">{meta.label}</span>
               </span>
               <span className="shrink-0 font-semibold tabular-nums ink-primary">

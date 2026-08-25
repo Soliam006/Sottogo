@@ -26,8 +26,10 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Modal } from "@/components/ui/Modal";
+import { PlaceIcon } from "@/components/ui/icons";
 import { Button } from "@/components/ui/Button";
 import { Field, Select, TextInput } from "@/components/ui/Field";
+import { CategoryIcon } from "@/components/ui/iconFor";
 import { PlacePicker } from "@/components/places/PlacePicker";
 import { RelatedContentSection } from "@/components/content/RelatedContentSection";
 
@@ -170,9 +172,9 @@ export function ExpenseFormModal({
         ? await createRelatedContent(db, ctx, [photo], related, EXPENSE_RELATED)
         : { moment: null };
 
-      const parts = ["💰 Gasto guardado"];
-      if (photo && related.enabled.gallery) parts.push("📸 Foto en la galería");
-      if (extra.moment) parts.push("✨ Momento creado");
+      const parts = ["Gasto guardado"];
+      if (photo && related.enabled.gallery) parts.push("Foto en la galería");
+      if (extra.moment) parts.push("Momento creado");
       toast(parts.join(" · "));
 
       reset();
@@ -257,13 +259,14 @@ export function ExpenseFormModal({
                   onClick={() => setCategory(c.id)}
                   aria-pressed={category === c.id}
                   className={
-                    "rounded-full border px-3 py-1.5 text-sm transition-colors " +
+                    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors " +
                     (category === c.id
                       ? "border-brand-500 bg-brand-50 font-medium text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
                       : "border-subtle ink-secondary hover:surface-2")
                   }
                 >
-                  <span aria-hidden>{c.emoji}</span> {c.label}
+                  <CategoryIcon category={c.id} size={16} className="shrink-0" />
+                  {c.label}
                 </button>
               ))}
             </div>
@@ -296,7 +299,12 @@ export function ExpenseFormModal({
                 onClick={() => setPickingPlace(true)}
                 className="flex-1 truncate rounded-xl border border-subtle px-3.5 py-2.5 text-left text-sm ink-primary hover:surface-2"
               >
-                {tripPlace ? `📍 ${tripPlace.place.name}` : "📍 Elegir lugar…"}
+                <span className="inline-flex min-w-0 items-center gap-2">
+                <PlaceIcon size={16} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+                <span className="truncate">
+                  {tripPlace ? tripPlace.place.name : "Elegir lugar…"}
+                </span>
+              </span>
               </button>
               {tripPlace && (
                 <Button variant="ghost" size="sm" onClick={() => setTripPlace(null)}>

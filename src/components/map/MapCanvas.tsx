@@ -10,6 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { mapStyleFor } from "./mapStyle";
+import { glyphSvg, type MarkerGlyph } from "./markerGlyphs";
 
 export interface MapMarkerData {
   id: string;
@@ -18,7 +19,10 @@ export interface MapMarkerData {
   label: string;
   sublabel?: string | null;
   imageUrl?: string | null;
-  badge?: string | null;
+  /** Icono a mostrar cuando no hay miniatura. */
+  badge?: MarkerGlyph | null;
+  /** Resumen de contenido del lugar: icono + numero, en el mapa global. */
+  stats?: { glyph: MarkerGlyph; count: number }[];
   /** Numero de elementos agrupados en este marcador (clustering). */
   count?: number | null;
   /** Marcador redondo con miniatura grande, para el mapa de recuerdos. */
@@ -271,7 +275,7 @@ function buildMemoryMarker(data: MapMarkerData, active: boolean): HTMLElement {
     img.className = "h-full w-full object-cover";
     frame.appendChild(img);
   } else {
-    frame.textContent = data.badge ?? "✨";
+    frame.innerHTML = glyphSvg(data.badge ?? "moment", 24);
   }
   root.appendChild(frame);
 
@@ -313,7 +317,7 @@ function buildPillMarker(data: MapMarkerData, active: boolean): HTMLElement {
     img.className = "h-full w-full object-cover";
     thumb.appendChild(img);
   } else {
-    thumb.textContent = data.badge ?? "📍";
+    thumb.innerHTML = glyphSvg(data.badge ?? "place", 18);
   }
 
   const text = document.createElement("span");
@@ -324,7 +328,17 @@ function buildPillMarker(data: MapMarkerData, active: boolean): HTMLElement {
   title.textContent = data.label;
   text.appendChild(title);
 
-  if (data.sublabel) {
+  if (data.stats?.length) {
+    const sub = document.createElement("span");
+    sub.className = "mt-0.5 flex items-center gap-2 text-[10px] opacity-80";
+    sub.innerHTML = data.stats
+      .map(
+        (stat) =>
+          `<span class="inline-flex items-center gap-0.5">${glyphSvg(stat.glyph, 11)}${stat.count}</span>`,
+      )
+      .join("");
+    text.appendChild(sub);
+  } else if (data.sublabel) {
     const sub = document.createElement("span");
     sub.className = "block truncate text-[10px] opacity-70";
     sub.textContent = data.sublabel;

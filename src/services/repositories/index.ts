@@ -7,3 +7,4 @@ export { photosRepo } from "./photos";
 export { itineraryRepo } from "./itinerary";
 export { momentsRepo } from "./moments";
 export { checklistRepo } from "./checklist";
+export { bookingsRepo } from "./bookings";

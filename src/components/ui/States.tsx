@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { WarningIcon, type Icon } from "./icons";
 import { Spinner } from "./Button";
 
 export function LoadingState({ label = "Cargando…", className }: { label?: string; className?: string }) {
@@ -28,7 +29,7 @@ export function ErrorState({
         className,
       )}
     >
-      <span className="text-2xl" aria-hidden>⚠️</span>
+      <WarningIcon size={28} weight="fill" className="text-rose-500" aria-hidden />
       <p className="text-sm text-rose-700 dark:text-rose-300">{message}</p>
       {onRetry && (
         <button
@@ -43,13 +44,14 @@ export function ErrorState({
 }
 
 export function EmptyState({
-  icon,
+  icon: Glyph,
   title,
   description,
   action,
   className,
 }: {
-  icon: string;
+  /** Componente de `@/components/ui/icons`. */
+  icon: Icon;
   title: string;
   description?: string;
   action?: React.ReactNode;
@@ -62,7 +64,8 @@ export function EmptyState({
         className,
       )}
     >
-      <span className="text-4xl" aria-hidden>{icon}</span>
+      {/* `duotone` a tamano grande: el estado vacio ilustra, no solo informa. */}
+      <Glyph size={44} weight="duotone" className="text-brand-500" aria-hidden />
       <div>
         <p className="font-semibold ink-primary">{title}</p>
         {description && <p className="mt-1 max-w-sm text-sm ink-muted">{description}</p>}

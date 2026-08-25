@@ -115,6 +115,70 @@ lugar en todos los viajes, pero con notas, valoración y estado propios en cada 
 
 ---
 
+## Preparacion del viaje
+
+Cuatro apartados en pestanas: **Vuelos**, **Hoteles**, **Coche** y **Otros**.
+
+Los tres primeros son reservas y comparten UNA tabla, `trip_bookings`, con un
+discriminante `kind`. No son tres tablas porque los tres tienen la misma forma
+real: un proveedor, un localizador, un inicio y un fin y, a veces, un origen y
+un destino.
+
+```
+vuelo   Iberia   IB6800   Madrid T4S  -> Tokio T3     12 abr 09:35 -> 13 abr 06:20
+hotel   Gracery           Shinjuku                    check-in     -> check-out
+coche   Hertz             Kioto       -> Kansai       recogida     -> devolucion
+```
+
+Lo que cambia entre tipos son los NOMBRES de cada campo, y eso vive en
+`BOOKING_KINDS` (`src/core/bookings`): etiquetas, placeholders, que campos
+aplican y los textos del estado vacio. Consecuencia practica: **anadir un tipo
+nuevo** (tren, ferry, actividad) es una entrada en ese array y un valor en el
+enum de la base de datos — ni el formulario ni la vista ni el repositorio
+cambian.
+
+- **"Otros" es la checklist de siempre**, movida a `ChecklistPanel`: mismos
+  `checklist_items`, mismo repositorio y mismos elementos. No hay migracion.
+- Las ubicaciones de hotel y coche reutilizan el buscador de lugares reales
+  (`MemoryLocationPicker`) y guardan `place_id` cuando el lugar viene de ahi,
+  pero **se pueden escribir a mano**: nada obliga a tener un `Place`.
+- No se almacenan pasaportes, documentos de identidad ni tarjetas: solo los
+  datos de la reserva.
+
+---
+
+## Iconografia
+
+Sin emojis en la interfaz: el set es **Phosphor Icons**, centralizado en
+`src/components/ui/icons.tsx`. Nadie importa de `@phosphor-icons/react`
+directamente, asi que cambiar un icono o el grosor se hace en un unico sitio.
+
+Los grosores dan la voz de la app:
+
+| Grosor    | Donde |
+|-----------|-------|
+| `fill`    | navegacion activa, categorias, marcadores, acentos |
+| `regular` | navegacion inactiva y acciones secundarias |
+| `duotone` | ilustracion: estados vacios y placeholders grandes |
+
+Dos detalles que conviene conocer:
+
+- **`src/core` no conoce React**, asi que las categorias de gasto y los iconos
+  del itinerario guardan una **clave** (`"food"`, `"temple"`) y es
+  `components/ui/iconFor.tsx` quien la traduce a componente.
+- **`itinerary_items.icon` guardaba el emoji en crudo.** `ItineraryItemIcon`
+  pinta el icono si el valor es una clave conocida y, si no, muestra el texto
+  original: las filas antiguas se siguen viendo y **no hace falta migrar datos**.
+- **Los marcadores del mapa** los construye MapLibre con DOM imperativo, donde
+  no caben componentes de React. `src/components/map/markerGlyphs.ts` tiene los
+  mismos iconos como cadenas SVG, **extraidas del propio paquete** para no
+  transcribir path data a mano.
+
+Las banderas de pais (`flagEmoji`) siguen siendo emoji a proposito: son
+banderas reales, no iconos, y Phosphor no las cubre.
+
+---
+
 ## Mapa jerarquico
 
 El mapa tiene dos niveles y dos conceptos de ubicacion que NO se mezclan:

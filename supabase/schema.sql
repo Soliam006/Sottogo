@@ -249,6 +249,45 @@ create table if not exists public.moment_photos (
 );
 
 -- ---------------------------------------------------------------------------
+-- RESERVAS DEL VIAJE (vuelos, alojamientos, coche de alquiler)
+--
+-- Una sola tabla con discriminante y no tres: los tres tipos comparten la misma
+-- forma real (proveedor, localizador, inicio/fin y, opcionalmente, origen y
+-- destino). Asi hay una politica RLS, un repositorio y un formulario, y anadir
+-- un tipo nuevo (tren, ferry...) es un valor mas en el enum.
+-- Los campos que solo usa un tipo (terminal, numero de vuelo) van como
+-- columnas anulables.
+-- ---------------------------------------------------------------------------
+do $$ begin
+  create type booking_kind as enum ('flight', 'stay', 'car');
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.trip_bookings (
+  id            uuid primary key default gen_random_uuid(),
+  trip_id       uuid not null references public.trips(id) on delete cascade,
+  created_by    uuid references public.profiles(id) on delete set null,
+  kind          booking_kind not null,
+  -- Aerolinea / nombre del hotel / compania de alquiler.
+  provider      text not null,
+  code          text,              -- numero de vuelo
+  reference     text,              -- localizador de la reserva
+  start_at      timestamptz,       -- salida / check-in / recogida
+  end_at        timestamptz,       -- llegada / check-out / devolucion
+  from_label    text,              -- origen / direccion / lugar de recogida
+  from_place_id uuid references public.places(id) on delete set null,
+  from_terminal text,
+  to_label      text,              -- destino / lugar de devolucion
+  to_place_id   uuid references public.places(id) on delete set null,
+  to_terminal   text,
+  notes         text,
+  created_at    timestamptz not null default now(),
+  constraint trip_bookings_dates_valid check (end_at is null or start_at is null or end_at >= start_at)
+);
+create index if not exists trip_bookings_trip_idx
+  on public.trip_bookings (trip_id, kind, start_at);
+
+-- ---------------------------------------------------------------------------
 -- JOURNAL / CHECKLIST
 -- ---------------------------------------------------------------------------
 create table if not exists public.journal_entries (
@@ -484,6 +523,7 @@ $$;
 --  Regla general: solo los miembros de un viaje ven/editan sus datos.
 -- ===========================================================================
 alter table public.profiles         enable row level security;
+alter table public.trip_bookings    enable row level security;
 alter table public.trips            enable row level security;
 alter table public.trip_members     enable row level security;
 alter table public.trip_invitations enable row level security;
@@ -586,7 +626,8 @@ declare
   t text;
 begin
   foreach t in array array['trip_places','expenses','photos','itinerary_items',
-                           'moments','journal_entries','checklist_items']
+                           'moments','journal_entries','checklist_items',
+                           'trip_bookings']
   loop
     execute format('drop policy if exists %I_member_all on public.%I', t, t);
     execute format($p$
@@ -662,7 +703,7 @@ declare
 begin
   foreach t in array array['trips','trip_members','trip_invitations','trip_places',
                            'expenses','photos','itinerary_items','moments',
-                           'checklist_items','journal_entries']
+                           'checklist_items','journal_entries','trip_bookings']
   loop
     begin
       execute format('alter publication supabase_realtime add table public.%I', t);

@@ -5,12 +5,12 @@ import type { ChecklistItem } from "@/core/models";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { checklistRepo } from "@/services/repositories";
+import type { AsyncState } from "@/hooks/useAsyncData";
 import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
-import { useChecklist } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { CloseIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { TextInput } from "@/components/ui/Field";
 import { ProgressBar } from "@/components/ui/Misc";
@@ -21,13 +21,23 @@ const SUGGESTIONS = [
   "Adaptador de enchufe", "Maleta", "Efectivo en moneda local",
 ];
 
-export function ChecklistView() {
+/**
+ * Apartado "Otros" de Preparacion: la checklist de siempre.
+ *
+ * Antes era la seccion entera (`ChecklistView`); ahora es una pestana dentro de
+ * `PreparationView`. El almacenamiento no cambia: los mismos `checklist_items`,
+ * el mismo repositorio y los mismos elementos que ya tenias.
+ *
+ * El estado llega por props y no de `useChecklist`: `PreparationView` ya
+ * necesita la lista para el contador de la pestana, y suscribirse dos veces a
+ * la misma tabla duplicaba la peticion y la suscripcion realtime.
+ */
+export function ChecklistPanel({ state }: { state: AsyncState<ChecklistItem[]> }) {
   const { trip } = useTrip();
-  const tripId = trip?.id ?? "";
   const { session } = useSession();
   const { toast } = useToast();
 
-  const { data, loading, error, refresh } = useChecklist(tripId);
+  const { data, loading, error, refresh } = state;
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -79,9 +89,7 @@ export function ChecklistView() {
   );
 
   return (
-    <div className="app-page max-w-2xl space-y-6">
-      <PageHeader title="Preparación" subtitle="Lo que no puedes olvidar antes de salir." />
-
+    <div className="space-y-4">
       {error && <ErrorState message={error} onRetry={() => void refresh()} />}
 
       <Card className="p-5">
@@ -129,7 +137,7 @@ export function ChecklistView() {
                   aria-label={`Eliminar ${item.title}`}
                   className="rounded-lg p-1 ink-muted transition-opacity hover:text-rose-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                 >
-                  ✕
+                  <CloseIcon size={14} weight="bold" aria-hidden />
                 </button>
               </li>
             ))}
@@ -154,10 +162,6 @@ export function ChecklistView() {
         )}
       </Card>
 
-      <p className="text-xs ink-muted">
-        Esta lista es solo de preparación. Voyago no almacena pasaportes, documentos de identidad,
-        tarjetas bancarias ni otros documentos personales.
-      </p>
     </div>
   );
 }
