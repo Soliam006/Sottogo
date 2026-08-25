@@ -1,0 +1,206 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import type { Photo } from "@/core/models";
+import { formatDate } from "@/lib/format";
+import { errorMessage } from "@/lib/errors";
+import { getSupabaseBrowserClient } from "@/services/supabase/client";
+import { photosRepo } from "@/services/repositories";
+import { removePhotoFiles } from "@/services/storage/photoStorage";
+import { useTrip } from "@/components/providers/TripProvider";
+import { usePhotos } from "@/hooks/useTripCollections";
+import { useToast } from "@/components/providers/ToastProvider";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
+import { SegmentedControl } from "@/components/ui/Misc";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { PhotoGrid } from "./PhotoGrid";
+import { PhotoLightbox } from "./PhotoLightbox";
+import { UploadPhotoModal } from "./UploadPhotoModal";
+import { RelatedFromPhotoModal } from "@/components/content/RelatedFromPhotoModal";
+
+type GroupBy = "date" | "place" | "person";
+/** Que fotos se listan: solo las de galeria o todas las del viaje. */
+type Scope = "gallery" | "all";
+
+export function GalleryView() {
+  const { trip, members } = useTrip();
+  const tripId = trip?.id ?? "";
+  const { toast } = useToast();
+  const [confirm, confirmDialog] = useConfirm();
+
+  const { data, loading, error, refresh } = usePhotos(tripId);
+  const [groupBy, setGroupBy] = useState<GroupBy>("date");
+  const [scope, setScope] = useState<Scope>("gallery");
+  const [uploading, setUploading] = useState(false);
+  const [selected, setSelected] = useState<Photo | null>(null);
+  const [relating, setRelating] = useState<Photo | null>(null);
+
+  const all = useMemo(() => data ?? [], [data]);
+
+  // La galeria muestra solo las fotos marcadas como tal. Las que nacen como
+  // ticket de un gasto o adjunto de un momento siguen existiendo (y se ven en
+  // su gasto / momento y en el mapa), pero no llenan la galeria salvo que se
+  // haya pedido explicitamente. «Todas» las deja alcanzables para poder
+  // promocionarlas o crear contenido desde ellas mas adelante.
+  const photos = useMemo(
+    () => (scope === "all" ? all : all.filter((photo) => photo.inGallery)),
+    [all, scope],
+  );
+  const hiddenCount = all.length - all.filter((photo) => photo.inGallery).length;
+
+  const groups = useMemo(() => {
+    const map = new Map<string, Photo[]>();
+
+    for (const photo of photos) {
+      let key: string;
+      if (groupBy === "place") {
+        key = photo.tripPlace ? photo.tripPlace.place.name : "Sin ubicación";
+      } else if (groupBy === "person") {
+        key = members.find((m) => m.userId === photo.uploadedBy)?.profile.name ?? "Desconocido";
+      } else {
+        key = (photo.takenAt ?? photo.createdAt).slice(0, 10);
+      }
+      const list = map.get(key) ?? [];
+      list.push(photo);
+      map.set(key, list);
+    }
+
+    return [...map.entries()].sort((a, b) =>
+      groupBy === "date" ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0]),
+    );
+  }, [photos, groupBy, members]);
+
+  async function toggleFeatured(photo: Photo) {
+    try {
+      await photosRepo.update(getSupabaseBrowserClient(), photo.id, { featured: !photo.featured });
+      setSelected((current) =>
+        current && current.id === photo.id ? { ...current, featured: !photo.featured } : current,
+      );
+      await refresh();
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    }
+  }
+
+  async function remove(photo: Photo) {
+    const ok = await confirm({
+      title: "Eliminar foto",
+      body: "La foto se borrará del viaje y del almacenamiento. Esta acción no se puede deshacer.",
+    });
+    if (!ok) return;
+
+    try {
+      const db = getSupabaseBrowserClient();
+      await photosRepo.remove(db, photo.id);
+      await removePhotoFiles(db, photo);
+      setSelected(null);
+      toast("Foto eliminada", "info");
+      await refresh();
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    }
+  }
+
+  if (loading && !data) return <LoadingState label="Cargando galería…" />;
+
+  return (
+    <div className="app-page max-w-6xl space-y-6">
+      <PageHeader
+        title="Galería"
+        subtitle={`${photos.length} recuerdo${photos.length === 1 ? "" : "s"} compartido${photos.length === 1 ? "" : "s"}`}
+        action={<Button onClick={() => setUploading(true)}>+ Foto</Button>}
+      />
+
+      {error && <ErrorState message={error} onRetry={() => void refresh()} />}
+
+      {photos.length === 0 ? (
+        <EmptyState
+          icon="📸"
+          title="La galería está vacía"
+          description={
+            hiddenCount > 0
+              ? `Hay ${hiddenCount} foto${hiddenCount === 1 ? "" : "s"} en gastos y momentos que aún no están en la galería.`
+              : "Sube las primeras fotos y asígnales un lugar para verlas en el mapa."
+          }
+          action={
+            hiddenCount > 0 ? (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={() => setUploading(true)}>Subir fotos</Button>
+                <Button variant="secondary" onClick={() => setScope("all")}>
+                  Ver todas las fotos
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => setUploading(true)}>Subir fotos</Button>
+            )
+          }
+        />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedControl<GroupBy>
+              value={groupBy}
+              onChange={setGroupBy}
+              options={[
+                { value: "date", label: "Por fecha" },
+                { value: "place", label: "Por lugar" },
+                { value: "person", label: "Por persona" },
+              ]}
+            />
+            {hiddenCount > 0 && (
+              <SegmentedControl<Scope>
+                value={scope}
+                onChange={setScope}
+                options={[
+                  { value: "gallery", label: "Galería" },
+                  { value: "all", label: "Todas", count: all.length },
+                ]}
+              />
+            )}
+          </div>
+
+          <div className="space-y-8">
+            {groups.map(([key, items]) => (
+              <section key={key}>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide ink-muted">
+                  {groupBy === "date" ? formatDate(key, "day") : key}
+                  <span className="ml-2 font-normal normal-case">({items.length})</span>
+                </h2>
+                <PhotoGrid photos={items} onSelect={setSelected} />
+              </section>
+            ))}
+          </div>
+        </>
+      )}
+
+      <UploadPhotoModal
+        open={uploading}
+        onClose={() => setUploading(false)}
+        onUploaded={() => void refresh()}
+      />
+
+      {selected && (
+        <PhotoLightbox
+          photo={selected}
+          photos={photos}
+          onNavigate={setSelected}
+          onClose={() => setSelected(null)}
+          onToggleFeatured={(p) => void toggleFeatured(p)}
+          onDelete={(p) => void remove(p)}
+          onCreateRelated={setRelating}
+          uploader={members.find((m) => m.userId === selected.uploadedBy)?.profile ?? null}
+        />
+      )}
+      {relating && (
+        <RelatedFromPhotoModal
+          photo={relating}
+          onClose={() => setRelating(null)}
+          onDone={() => void refresh()}
+        />
+      )}
+      {confirmDialog}
+    </div>
+  );
+}

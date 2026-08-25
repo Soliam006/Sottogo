@@ -1,0 +1,266 @@
+@import "tailwindcss";
+
+/* Modo oscuro por clase: lo controla ThemeProvider (light | dark | system). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Marca: indigo profundo de noche + ambar calido de atardecer. */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-sunset-300: #fdba74;
+  --color-sunset-400: #fb923c;
+  --color-sunset-500: #f97316;
+  --color-sunset-600: #ea580c;
+
+  --radius-xl2: 1.25rem;
+
+  --animate-rise: rise 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade: fade 0.2s ease-out;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---------------------------------------------------------------------------
+   Tokens de superficie e ink. Un unico sitio donde vive el tema.
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  /* -------------------------------------------------------------------------
+     Altura del "chrome" fijo. Un unico sitio donde vive: la barra superior y la
+     navegacion inferior se dimensionan con estas variables Y las vistas que
+     necesitan ocupar el viewport restante (el mapa) las restan. Asi no hay
+     numeros magicos que se desincronicen al tocar el header.
+     ------------------------------------------------------------------------- */
+  --app-header-h: 4rem;   /* movil: dos lineas (volver + nombre del viaje) */
+  --app-nav-h: 4rem;      /* navegacion inferior movil */
+
+  --surface-0: #f7f6f3;   /* fondo de pagina */
+  --surface-1: #ffffff;   /* tarjetas */
+  --surface-2: #f1efea;   /* superficies sutiles */
+  --border-subtle: #e4e1da;
+  --text-primary: #16150f;
+  --text-secondary: #55534b;
+  --text-muted: #85837a;
+
+  /* Paleta categorica validada (modo claro). El 9.o slot es gris neutro. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --series-9: #85837a;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --surface-0: #101013;
+  --surface-1: #1a1a1f;
+  --surface-2: #232329;
+  --border-subtle: #32323a;
+  --text-primary: #f7f7f5;
+  --text-secondary: #c3c2b7;
+  --text-muted: #8d8c85;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-9: #8d8c85;
+}
+
+/* En desktop no hay navegacion inferior y la barra superior es de una linea. */
+@media (min-width: 1024px) {
+  :root {
+    --app-header-h: 3.5rem;
+    --app-nav-h: 0rem;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /*
+   * Un unico scroll vertical: el del documento. Ninguna vista debe crear su
+   * propio contenedor de scroll salvo que sea intencionado (listas largas
+   * dentro de un modal, carruseles...).
+   *
+   * `clip` y no `hidden`: hidden convertiria el elemento en contenedor de
+   * scroll y romperia el `position: sticky` del header y del sidebar.
+   */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * Red de seguridad contra el desbordamiento horizontal: un nombre de viaje o
+   * un lugar sin espacios no puede ensanchar la pagina.
+   */
+  h1, h2, h3, h4, p, dd, dt, li, span, button, a {
+    overflow-wrap: break-word;
+  }
+
+  img, svg, video, canvas {
+    max-width: 100%;
+  }
+
+  ::selection {
+    background: var(--color-brand-500);
+    color: white;
+  }
+
+  /* Foco visible y consistente en toda la app. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+
+  input, textarea, select, button {
+    font: inherit;
+  }
+}
+
+@layer utilities {
+  .surface-0 { background-color: var(--surface-0); }
+  .surface-1 { background-color: var(--surface-1); }
+  /* Variante translucida para barras fijas con backdrop-blur. */
+  .surface-1-blur { background-color: color-mix(in srgb, var(--surface-1) 92%, transparent); }
+  .surface-2 { background-color: var(--surface-2); }
+  .ink-primary { color: var(--text-primary); }
+  .ink-secondary { color: var(--text-secondary); }
+  .ink-muted { color: var(--text-muted); }
+  .border-subtle { border-color: var(--border-subtle); }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* --- Sistema de scroll ---------------------------------------------------
+     Tres utilidades y ninguna mas. Todas las vistas usan el scroll del
+     documento; `app-fill` es la unica excepcion, para pantallas que deben
+     ocupar exactamente el viewport disponible (el mapa).
+     ------------------------------------------------------------------------- */
+
+  /* Hueco bajo el contenido para que la navegacion fija no tape lo ultimo. */
+  .app-nav-gap {
+    padding-bottom: calc(var(--app-nav-h) + env(safe-area-inset-bottom));
+  }
+
+  /* Viewport menos el chrome fijo. Sustituye a cualquier calc() a mano. */
+  .app-fill {
+    height: calc(100dvh - var(--app-header-h) - var(--app-nav-h) - env(safe-area-inset-bottom));
+  }
+
+  /* Scroll interno intencionado: no encadena con el scroll de la pagina. */
+  .app-scroll-y {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Contenedor estandar de pagina. El ancho maximo lo pone cada vista. */
+  .app-page {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+    padding-block: 2rem;
+  }
+  @media (min-width: 640px) {
+    .app-page { padding-inline: 1.5rem; }
+  }
+
+}
+
+/* ---------------------------------------------------------------------------
+   Encogido de los items de grid.
+
+   Un item de grid tiene `min-width: auto`: no puede encogerse por debajo de su
+   contenido minimo. Un `truncate` (white-space: nowrap) dentro de una tarjeta
+   ensanchaba la tarjeta muy por encima de su pista y sacaba la fila de la
+   pantalla. Dentro del area de contenido queremos siempre lo contrario: que el
+   item se ajuste a la pista y sea el texto el que se recorte.
+
+   Va en CSS plano y no en `@layer utilities` porque Tailwind v4 descarta ahi
+   los selectores descendentes.
+   --------------------------------------------------------------------------- */
+.app-page .grid > * {
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   MapLibre: adaptar los controles al tema de la app.
+   --------------------------------------------------------------------------- */
+.maplibregl-ctrl-group {
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12) !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border-subtle) !important;
+}
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+.maplibregl-ctrl-attrib {
+  background: rgb(255 255 255 / 0.7) !important;
+  font-size: 10px !important;
+}
+.dark .maplibregl-ctrl-attrib {
+  background: rgb(0 0 0 / 0.5) !important;
+}
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--text-secondary) !important;
+}
+.maplibregl-popup-content {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.maplibregl-popup-tip {
+  display: none !important;
+}
