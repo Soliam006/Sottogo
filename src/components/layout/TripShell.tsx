@@ -67,8 +67,17 @@ export function TripShell({ children }: { children: React.ReactNode }) {
     return segment === "" ? pathname === href : pathname.startsWith(href);
   };
 
-  const primary = nav.filter((item) => item.primary);
-  const secondary = nav.filter((item) => !item.primary);
+  /**
+   * La barra inferior tiene cinco huecos. Si todas las secciones del rol caben,
+   * se pintan todas y el boton "Más" sobra: un visitante tiene cuatro y no
+   * tiene sentido esconderle dos detras de los tres puntos.
+   * Si no caben (un miembro tiene diez), se muestran las principales y el resto
+   * pasa al modal, como hasta ahora.
+   */
+  const BOTTOM_SLOTS = 5;
+  const fitsAll = nav.length <= BOTTOM_SLOTS;
+  const bottomItems = fitsAll ? nav : nav.filter((item) => item.primary);
+  const overflow = fitsAll ? [] : nav.filter((item) => !item.primary);
 
   return (
     <div className="flex min-h-dvh">
@@ -146,7 +155,7 @@ export function TripShell({ children }: { children: React.ReactNode }) {
 
         {/* Navegacion inferior - movil */}
         <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 flex border-t border-subtle surface-1-blur backdrop-blur lg:hidden">
-          {primary.map((item) => {
+          {bottomItems.map((item) => {
             const active = isActive(item.segment);
             return (
               <Link
@@ -162,18 +171,20 @@ export function TripShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
-          <button
-            onClick={() => setMoreOpen(true)}
-            className="flex h-[var(--app-nav-h)] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium ink-muted"
-          >
-            <MoreGlyph />
-            <span className="max-w-full truncate">Más</span>
-          </button>
+          {overflow.length > 0 && (
+            <button
+              onClick={() => setMoreOpen(true)}
+              className="flex h-[var(--app-nav-h)] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium ink-muted"
+            >
+              <MoreGlyph />
+              <span className="max-w-full truncate">Más</span>
+            </button>
+          )}
         </nav>
 
         <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title="Más secciones">
           <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-            {secondary.map((item) => (
+            {overflow.map((item) => (
               <Link
                 key={item.key}
                 href={tripHref(trip.id, item.segment)}
