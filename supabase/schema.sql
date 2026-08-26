@@ -249,6 +249,27 @@ create table if not exists public.moment_photos (
 );
 
 -- ---------------------------------------------------------------------------
+-- COMENTARIOS DE MOMENTOS
+--
+-- `trip_id` esta denormalizado a proposito: las politicas RLS y el filtro de
+-- tiempo real (`trip_id=eq.<viaje>`) trabajan con el viaje, y sin esta columna
+-- cada comprobacion tendria que saltar a `moments`.
+-- ---------------------------------------------------------------------------
+create table if not exists public.moment_comments (
+  id         uuid primary key default gen_random_uuid(),
+  moment_id  uuid not null references public.moments(id) on delete cascade,
+  trip_id    uuid not null references public.trips(id) on delete cascade,
+  author_id  uuid references public.profiles(id) on delete set null,
+  body       text not null,
+  created_at timestamptz not null default now(),
+  constraint moment_comments_body_len check (char_length(btrim(body)) between 1 and 1000)
+);
+create index if not exists moment_comments_moment_idx
+  on public.moment_comments (moment_id, created_at);
+create index if not exists moment_comments_trip_idx
+  on public.moment_comments (trip_id, created_at desc);
+
+-- ---------------------------------------------------------------------------
 -- RESERVAS DEL VIAJE (vuelos, alojamientos, coche de alquiler)
 --
 -- Una sola tabla con discriminante y no tres: los tres tipos comparten la misma
@@ -523,6 +544,7 @@ $$;
 --  Regla general: solo los miembros de un viaje ven/editan sus datos.
 -- ===========================================================================
 alter table public.profiles         enable row level security;
+alter table public.moment_comments  enable row level security;
 alter table public.trip_bookings    enable row level security;
 alter table public.trips            enable row level security;
 alter table public.trip_members     enable row level security;
@@ -639,6 +661,25 @@ begin
   end loop;
 end $$;
 
+-- Los comentarios NO entran en el bucle `%I_member_all`: cualquiera del viaje
+-- puede leerlos, pero solo el autor (o el propietario del viaje) puede
+-- borrarlos, y nadie puede publicar en nombre de otro.
+drop policy if exists moment_comments_select on public.moment_comments;
+create policy moment_comments_select on public.moment_comments
+  for select using (public.is_trip_member(trip_id));
+
+drop policy if exists moment_comments_insert on public.moment_comments;
+create policy moment_comments_insert on public.moment_comments
+  for insert with check (public.is_trip_member(trip_id) and author_id = auth.uid());
+
+drop policy if exists moment_comments_update on public.moment_comments;
+create policy moment_comments_update on public.moment_comments
+  for update using (author_id = auth.uid()) with check (author_id = auth.uid());
+
+drop policy if exists moment_comments_delete on public.moment_comments;
+create policy moment_comments_delete on public.moment_comments
+  for delete using (author_id = auth.uid() or public.is_trip_owner(trip_id));
+
 drop policy if exists moment_photos_member_all on public.moment_photos;
 create policy moment_photos_member_all on public.moment_photos
   for all
@@ -703,7 +744,8 @@ declare
 begin
   foreach t in array array['trips','trip_members','trip_invitations','trip_places',
                            'expenses','photos','itinerary_items','moments',
-                           'checklist_items','journal_entries','trip_bookings']
+                           'checklist_items','journal_entries','trip_bookings',
+                           'moment_comments']
   loop
     begin
       execute format('alter publication supabase_realtime add table public.%I', t);

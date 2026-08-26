@@ -115,6 +115,30 @@ lugar en todos los viajes, pero con notas, valoración y estado propios en cada 
 
 ---
 
+## Momentos
+
+Muro de tarjetas donde manda la fotografia: ocupa el ancho completo de la
+tarjeta, sin margenes, y el resto se apoya debajo.
+
+- **Sin "me gusta", a proposito.** Las unicas dos acciones son comentar y
+  compartir.
+- **Comentarios** en `moment_comments`, plegados por defecto (se ven los dos
+  ultimos) y desplegables. Tienen politicas RLS propias y no entran en el bucle
+  `%I_member_all`: cualquiera del viaje los lee, nadie publica en nombre de
+  otro, y borrar es cosa del autor o del propietario del viaje.
+  Se cargan de una vez para todo el viaje y la vista los agrupa por momento:
+  una consulta y una suscripcion, no una por tarjeta.
+- **Carrusel** con `scroll-snap` nativo: en movil se pasa con el dedo con el
+  desplazamiento del sistema, y en escritorio aparecen flechas al pasar el
+  raton. El indice sale de la posicion real del scroll, asi que el contador
+  acierta tambien al deslizar.
+- **Compartir** usa `navigator.share` (la hoja nativa del movil). Fuera de
+  contexto seguro o en navegadores sin soporte cae al portapapeles, y si
+  tampoco hay portapapeles avisa: `src/lib/share.ts` distingue los cuatro
+  desenlaces para que el boton nunca falle en silencio.
+
+---
+
 ## Preparacion del viaje
 
 Cuatro apartados en pestanas: **Vuelos**, **Hoteles**, **Coche** y **Otros**.

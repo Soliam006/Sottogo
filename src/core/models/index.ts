@@ -202,6 +202,16 @@ export interface Moment {
   author?: PublicProfile;
 }
 
+/** Comentario de un momento. */
+export interface MomentComment {
+  id: UUID;
+  momentId: UUID;
+  tripId: UUID;
+  authorId: UUID | null;
+  body: string;
+  createdAt: ISODateTime;
+}
+
 /** Vuelo, alojamiento o coche de alquiler. Ver `src/core/bookings`. */
 export type BookingKind = "flight" | "stay" | "car";
 

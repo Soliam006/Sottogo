@@ -1,11 +1,20 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Booking, ChecklistItem, Expense, ItineraryItem, Moment, Photo } from "@/core/models";
+import type {
+  Booking,
+  ChecklistItem,
+  Expense,
+  ItineraryItem,
+  Moment,
+  MomentComment,
+  Photo,
+} from "@/core/models";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import {
   bookingsRepo,
   checklistRepo,
+  momentCommentsRepo,
   expensesRepo,
   itineraryRepo,
   momentsRepo,
@@ -75,6 +84,20 @@ export function useBookings(tripId: string): AsyncState<Booking[]> {
   );
   const state = useAsyncData<Booking[]>(load, [tripId]);
   useRealtimeTables(tripId, ["trip_bookings"], () => void state.refresh());
+  return state;
+}
+
+/**
+ * Comentarios de TODOS los momentos del viaje, en una sola consulta.
+ * La vista los agrupa por momento.
+ */
+export function useMomentComments(tripId: string): AsyncState<MomentComment[]> {
+  const load = useCallback(
+    () => momentCommentsRepo.listByTrip(getSupabaseBrowserClient(), tripId),
+    [tripId],
+  );
+  const state = useAsyncData<MomentComment[]>(load, [tripId]);
+  useRealtimeTables(tripId, ["moment_comments"], () => void state.refresh());
   return state;
 }
 

@@ -23,14 +23,14 @@ export interface NavItem {
 
 export const TRIP_NAV: NavItem[] = [
   { key: "home", label: "Inicio", Icon: HomeIcon, segment: "", primary: true },
-  { key: "map", label: "Mapa", Icon: MapIcon, segment: "map", primary: true },
+  { key: "expenses", label: "Gastos", Icon: ExpenseIcon, segment: "expenses", primary: true },
+  { key: "moments", label: "Momentos", Icon: MomentIcon, segment: "moments", primary: true },
+  { key: "gallery", label: "Galería", Icon: GalleryIcon, segment: "gallery", primary: true },
+  { key: "map", label: "Mapa", Icon: MapIcon, segment: "map"},
   { key: "itinerary", label: "Itinerario", Icon: ItineraryIcon, segment: "itinerary" },
   { key: "places", label: "Lugares", Icon: PlaceIcon, segment: "places" },
-  { key: "expenses", label: "Gastos", Icon: ExpenseIcon, segment: "expenses", primary: true },
-  { key: "gallery", label: "Galería", Icon: GalleryIcon, segment: "gallery", primary: true },
-  { key: "moments", label: "Momentos", Icon: MomentIcon, segment: "moments" },
-  { key: "summary", label: "Resumen", Icon: SummaryIcon, segment: "summary" },
   { key: "checklist", label: "Preparación", Icon: ChecklistIcon, segment: "checklist" },
+  { key: "summary", label: "Resumen", Icon: SummaryIcon, segment: "summary" },
   { key: "settings", label: "Configuración", Icon: SettingsIcon, segment: "settings" },
 ];
 

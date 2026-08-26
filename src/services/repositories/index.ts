@@ -8,3 +8,4 @@ export { itineraryRepo } from "./itinerary";
 export { momentsRepo } from "./moments";
 export { checklistRepo } from "./checklist";
 export { bookingsRepo } from "./bookings";
+export { momentCommentsRepo } from "./momentComments";

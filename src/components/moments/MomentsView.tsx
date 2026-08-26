@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { Moment, Photo, TripPlace } from "@/core/models";
+import type { Moment, MomentComment, Photo, TripPlace } from "@/core/models";
 import type { MemoryLocation } from "@/core/map/location";
-import { formatDate, todayISO } from "@/lib/format";
+import { todayISO } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
-import { momentsRepo } from "@/services/repositories";
+import { momentCommentsRepo, momentsRepo } from "@/services/repositories";
 import {
   createRelatedContent,
   ensureSharedPhoto,
@@ -21,19 +21,18 @@ import {
 } from "@/core/content/related";
 import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
-import { useMoments, usePhotos } from "@/hooks/useTripCollections";
+import { useMomentComments, useMoments, usePhotos } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { CheckIcon, CloseIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
-import { Card } from "@/components/ui/Card";
+import { CheckIcon, MomentIcon, PlaceIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/Modal";
 import { Field, TextArea, TextInput } from "@/components/ui/Field";
 import { Rating } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
-import { PhotoTile } from "@/components/photos/PhotoGrid";
 import { PhotoLightbox } from "@/components/photos/PhotoLightbox";
+import { MomentCard } from "./MomentCard";
 import { PlacePicker } from "@/components/places/PlacePicker";
 import { MemoryLocationField } from "@/components/map/MemoryLocationField";
 import { RelatedContentSection } from "@/components/content/RelatedContentSection";
@@ -43,16 +42,53 @@ import { RelatedContentSection } from "@/components/content/RelatedContentSectio
  * fecha y una historia corta.
  */
 export function MomentsView() {
-  const { trip } = useTrip();
+  const { trip, members, role } = useTrip();
   const tripId = trip?.id ?? "";
+  const { session } = useSession();
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
 
   const { data, loading, error, refresh } = useMoments(tripId);
+  const { data: commentData, refresh: refreshComments } = useMomentComments(tripId);
   const [creating, setCreating] = useState(false);
   const [lightbox, setLightbox] = useState<{ photo: Photo; photos: Photo[] } | null>(null);
 
   const moments = data ?? [];
+  const userId = session?.user?.id ?? null;
+
+  // Los comentarios llegan en una sola consulta y se reparten por momento.
+  const commentsByMoment = new Map<string, MomentComment[]>();
+  for (const comment of commentData ?? []) {
+    const list = commentsByMoment.get(comment.momentId) ?? [];
+    list.push(comment);
+    commentsByMoment.set(comment.momentId, list);
+  }
+
+  async function addComment(moment: Moment, body: string) {
+    if (!trip || !userId) return;
+    await momentCommentsRepo.create(
+      getSupabaseBrowserClient(),
+      trip.id,
+      moment.id,
+      userId,
+      body,
+    );
+    await refreshComments();
+  }
+
+  async function removeComment(comment: MomentComment) {
+    const ok = await confirm({
+      title: "Eliminar comentario",
+      body: "Se eliminará tu comentario. Esta acción no se puede deshacer.",
+    });
+    if (!ok) return;
+    try {
+      await momentCommentsRepo.remove(getSupabaseBrowserClient(), comment.id);
+      await refreshComments();
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    }
+  }
 
   async function remove(moment: Moment) {
     const ok = await confirm({ title: "Eliminar momento", body: `Se eliminará “${moment.title}”. Las fotos se conservan en la galería.` });
@@ -86,53 +122,20 @@ export function MomentsView() {
           action={<Button onClick={() => setCreating(true)}>Crear momento</Button>}
         />
       ) : (
-        <ul className="space-y-5">
+        <ul className="space-y-1">
           {moments.map((moment) => (
             <li key={moment.id}>
-              <Card className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold ink-primary">{moment.title}</h2>
-                    <p className="mt-0.5 text-xs ink-muted">
-                      {formatDate(moment.date, "long")}
-                      {moment.tripPlace ? ` · ${moment.tripPlace.place.name}` : ""}
-                      {moment.photos?.length ? ` · ${moment.photos.length} foto${moment.photos.length === 1 ? "" : "s"}` : ""}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => void remove(moment)}
-                    aria-label="Eliminar momento"
-                    className="rounded-lg p-1.5 ink-muted transition-colors hover:text-rose-600"
-                  >
-                    <CloseIcon size={16} weight="bold" aria-hidden />
-                  </button>
-                </div>
-
-                {moment.rating !== null && (
-                  <div className="mt-2">
-                    <Rating value={moment.rating} readOnly />
-                  </div>
-                )}
-
-                {moment.description && (
-                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed ink-secondary">
-                    {moment.description}
-                  </p>
-                )}
-
-                {moment.photos && moment.photos.length > 0 && (
-                  <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {moment.photos.map((photo) => (
-                      <li key={photo.id}>
-                        <PhotoTile
-                          photo={photo}
-                          onClick={() => setLightbox({ photo, photos: moment.photos ?? [] })}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Card>
+              <MomentCard
+                moment={moment}
+                members={members}
+                comments={commentsByMoment.get(moment.id) ?? []}
+                currentUserId={userId}
+                canDelete={moment.createdBy === userId || role === "owner"}
+                onDelete={() => void remove(moment)}
+                onOpenPhoto={(photo, photos) => setLightbox({ photo, photos })}
+                onComment={(body) => addComment(moment, body)}
+                onDeleteComment={(comment) => void removeComment(comment)}
+              />
             </li>
           ))}
         </ul>

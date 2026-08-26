@@ -162,7 +162,7 @@ export function GalleryView() {
             )}
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-2">
             {groups.map(([key, items]) => (
               <section key={key}>
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide ink-muted">

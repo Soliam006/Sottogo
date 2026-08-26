@@ -18,7 +18,7 @@ export function PhotoTile({
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative aspect-square w-full overflow-hidden rounded-xl surface-2",
+        "group relative aspect-square w-full overflow-hidden surface-2",
         className,
       )}
     >
@@ -55,14 +55,14 @@ export function PhotoTile({
 export function PhotoGrid({
   photos,
   onSelect,
-  columns = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+  columns = "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6",
 }: {
   photos: Photo[];
   onSelect: (photo: Photo) => void;
   columns?: string;
 }) {
   return (
-    <ul className={cn("grid gap-2", columns)}>
+    <ul className={cn("grid gap-1", columns)}>
       {photos.map((photo) => (
         <li key={photo.id}>
           <PhotoTile photo={photo} onClick={() => onSelect(photo)} />

@@ -8,6 +8,7 @@
 import type {
   Booking,
   ChecklistItem,
+  MomentComment,
   Expense,
   ItineraryItem,
   JournalEntry,
@@ -211,6 +212,17 @@ export function toMoment(row: Row): Moment {
     createdAt: str(row.created_at),
     tripPlace: row.trip_place ? toTripPlace(row.trip_place as Row) : null,
     photos: links.map((link) => toPhoto((link.photo as Row) ?? {})),
+  };
+}
+
+export function toMomentComment(row: Row): MomentComment {
+  return {
+    id: str(row.id),
+    momentId: str(row.moment_id),
+    tripId: str(row.trip_id),
+    authorId: strOrNull(row.author_id),
+    body: str(row.body),
+    createdAt: str(row.created_at),
   };
 }
 

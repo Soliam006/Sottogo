@@ -23,6 +23,9 @@ import { BellIcon } from "@phosphor-icons/react/dist/ssr/Bell";
 import { BuildingsIcon } from "@phosphor-icons/react/dist/ssr/Buildings";
 import { CalendarBlankIcon } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 import { CameraIcon } from "@phosphor-icons/react/dist/ssr/Camera";
+import { CaretLeftIcon } from "@phosphor-icons/react/dist/ssr/CaretLeft";
+import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { ChatCircleIcon } from "@phosphor-icons/react/dist/ssr/ChatCircle";
 import { CarIcon } from "@phosphor-icons/react/dist/ssr/Car";
 import { CheckIcon as PhCheck } from "@phosphor-icons/react/dist/ssr/Check";
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr/CheckCircle";
@@ -30,6 +33,7 @@ import { ClipboardTextIcon } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { CoffeeIcon } from "@phosphor-icons/react/dist/ssr/Coffee";
 import { CompassIcon } from "@phosphor-icons/react/dist/ssr/Compass";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/ssr/Crosshair";
+import { DotsThreeIcon } from "@phosphor-icons/react/dist/ssr/DotsThree";
 import { FlowerIcon } from "@phosphor-icons/react/dist/ssr/Flower";
 import { ForkKnifeIcon } from "@phosphor-icons/react/dist/ssr/ForkKnife";
 import { GameControllerIcon } from "@phosphor-icons/react/dist/ssr/GameController";
@@ -49,6 +53,7 @@ import { PackageIcon } from "@phosphor-icons/react/dist/ssr/Package";
 import { PaperclipIcon } from "@phosphor-icons/react/dist/ssr/Paperclip";
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 import { PushPinIcon } from "@phosphor-icons/react/dist/ssr/PushPin";
+import { ShareNetworkIcon } from "@phosphor-icons/react/dist/ssr/ShareNetwork";
 import { ShoppingBagIcon } from "@phosphor-icons/react/dist/ssr/ShoppingBag";
 import { SignpostIcon } from "@phosphor-icons/react/dist/ssr/Signpost";
 import { SparkleIcon } from "@phosphor-icons/react/dist/ssr/Sparkle";
@@ -89,6 +94,11 @@ export const AttachIcon = PaperclipIcon;
 export const LocateIcon = CrosshairIcon;
 export const PinIcon = PushPinIcon;
 export const NotificationIcon = BellIcon;
+export const CommentIcon = ChatCircleIcon;
+export const ShareIcon = ShareNetworkIcon;
+export const MoreIcon = DotsThreeIcon;
+export const PrevIcon = CaretLeftIcon;
+export const NextIcon = CaretRightIcon;
 
 // --- Preparacion del viaje --------------------------------------------------
 export const FlightIcon = AirplaneTakeoffIcon;
