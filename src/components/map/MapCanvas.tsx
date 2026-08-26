@@ -25,8 +25,14 @@ export interface MapMarkerData {
   stats?: { glyph: MarkerGlyph; count: number }[];
   /** Numero de elementos agrupados en este marcador (clustering). */
   count?: number | null;
-  /** Marcador redondo con miniatura grande, para el mapa de recuerdos. */
-  variant?: "pill" | "memory";
+  /** Turno dentro de una ruta. Lo usa la variante `step`. */
+  order?: number | null;
+  /**
+   * `pill`   -> tarjeta con miniatura (mapa general)
+   * `memory` -> miniatura grande y redonda (mapa de recuerdos)
+   * `step`   -> circulo numerado (mapa del itinerario)
+   */
+  variant?: "pill" | "memory" | "step";
   /** Resalta el marcador (p. ej. el seleccionado). */
   active?: boolean;
 }
@@ -52,6 +58,11 @@ export interface MapCanvasProps {
   fitPadding?: number;
   /** Notifica el zoom actual: el clustering depende de el. */
   onZoomChange?: (zoom: number) => void;
+  /**
+   * Linea que une puntos en orden. Ayuda visual del recorrido de un dia; no es
+   * una ruta calculada, es el trazo recto entre paradas consecutivas.
+   */
+  route?: { latitude: number; longitude: number }[] | null;
   showControls?: boolean;
   className?: string;
 }
@@ -72,6 +83,7 @@ export function MapCanvas({
   fitMaxZoom = 14,
   fitPadding = 72,
   onZoomChange,
+  route = null,
   showControls = true,
   className,
 }: MapCanvasProps) {
@@ -141,6 +153,56 @@ export function MapCanvas({
     if (!mapRef.current || !ready) return;
     mapRef.current.setStyle(mapStyleFor(resolved));
   }, [resolved, ready]);
+
+  // --- Ruta del dia ---------------------------------------------------------
+  const drawRoute = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+
+    const points = (route ?? []).filter(
+      (p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude),
+    );
+    const data: GeoJSON.Feature<GeoJSON.LineString> = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "LineString",
+        coordinates: points.map((p) => [p.longitude, p.latitude]),
+      },
+    };
+
+    const source = map.getSource(ROUTE_SOURCE);
+    if (source) {
+      (source as maplibregl.GeoJSONSource).setData(data);
+      return;
+    }
+
+    map.addSource(ROUTE_SOURCE, { type: "geojson", data });
+    map.addLayer({
+      id: ROUTE_LAYER,
+      type: "line",
+      source: ROUTE_SOURCE,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#6366f1",
+        "line-width": 3,
+        "line-opacity": 0.85,
+        "line-dasharray": [2, 1.6],
+      },
+    });
+  }, [route]);
+
+  useEffect(() => {
+    if (!ready) return;
+    drawRoute();
+    // `setStyle` (cambio de tema) se lleva por delante fuentes y capas propias.
+    const map = mapRef.current;
+    if (!map) return;
+    map.on("styledata", drawRoute);
+    return () => {
+      map.off("styledata", drawRoute);
+    };
+  }, [ready, drawRoute]);
 
   // --- Sincronizacion de marcadores ----------------------------------------
   const syncMarkers = useCallback(() => {
@@ -241,10 +303,46 @@ export function MapCanvas({
   );
 }
 
+const ROUTE_SOURCE = "voyago-route";
+const ROUTE_LAYER = "voyago-route-line";
+
 function buildMarkerElement(data: MapMarkerData, active: boolean): HTMLElement {
-  return data.variant === "memory"
-    ? buildMemoryMarker(data, active)
-    : buildPillMarker(data, active);
+  if (data.variant === "memory") return buildMemoryMarker(data, active);
+  if (data.variant === "step") return buildStepMarker(data, active);
+  return buildPillMarker(data, active);
+}
+
+/**
+ * Marcador del mapa del ITINERARIO: circulo con el numero de turno y el
+ * titulo al lado. El numero es lo que hace legible el recorrido del dia.
+ */
+function buildStepMarker(data: MapMarkerData, active: boolean): HTMLElement {
+  const root = document.createElement("button");
+  root.type = "button";
+  root.setAttribute("aria-label", data.order ? `${data.order}. ${data.label}` : data.label);
+  root.className = [
+    "voyago-marker flex max-w-[180px] items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5",
+    "shadow-lg backdrop-blur transition-transform duration-150 hover:scale-[1.05]",
+    active
+      ? "border-transparent bg-[var(--color-brand-600)] text-white scale-[1.06]"
+      : "border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)]",
+  ].join(" ");
+
+  const badge = document.createElement("span");
+  badge.className = [
+    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+    active
+      ? "bg-white/25 text-white"
+      : "bg-[var(--color-brand-600)] text-white",
+  ].join(" ");
+  badge.textContent = String(data.order ?? "");
+
+  const title = document.createElement("span");
+  title.className = "truncate text-xs font-semibold";
+  title.textContent = data.label;
+
+  root.append(badge, title);
+  return root;
 }
 
 /**

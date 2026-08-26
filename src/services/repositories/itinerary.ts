@@ -11,7 +11,14 @@ export interface ItineraryInput {
   startTime: string | null;
   endTime: string | null;
   icon: string | null;
-  tripPlaceId: UUID | null;
+  /** Ubicacion propia del itinerario. No crea ningun `trip_place`. */
+  latitude: number | null;
+  longitude: number | null;
+  locationName: string | null;
+  /** Lugar del catalogo global, opcional. */
+  placeId: UUID | null;
+  /** Heredado; el formulario ya no lo escribe. */
+  tripPlaceId?: UUID | null;
 }
 
 export const itineraryRepo = {
@@ -38,7 +45,11 @@ export const itineraryRepo = {
         start_time: input.startTime,
         end_time: input.endTime,
         icon: input.icon,
-        trip_place_id: input.tripPlaceId,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        location_name: input.locationName,
+        place_id: input.placeId,
+        trip_place_id: input.tripPlaceId ?? null,
       })
       .select(SELECT)
       .single();
@@ -54,6 +65,10 @@ export const itineraryRepo = {
     if (input.startTime !== undefined) payload.start_time = input.startTime;
     if (input.endTime !== undefined) payload.end_time = input.endTime;
     if (input.icon !== undefined) payload.icon = input.icon;
+    if (input.latitude !== undefined) payload.latitude = input.latitude;
+    if (input.longitude !== undefined) payload.longitude = input.longitude;
+    if (input.locationName !== undefined) payload.location_name = input.locationName;
+    if (input.placeId !== undefined) payload.place_id = input.placeId;
     if (input.tripPlaceId !== undefined) payload.trip_place_id = input.tripPlaceId;
 
     const result = await db

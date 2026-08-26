@@ -1,13 +1,17 @@
 /**
  * Agrupacion de gastos por dia del viaje.
  *
- * Capa pura: sin React ni Supabase. Las fechas se manejan como cadenas
- * `YYYY-MM-DD` y la aritmetica va en UTC, para que sumar un dia no dependa de
- * la zona horaria del navegador ni del horario de verano.
+ * La aritmetica de fechas y la union de dias viven en `@/core/calendar/days`,
+ * compartidas con el Itinerario.
+ *
+ * Capa pura: sin React ni Supabase.
  */
 
 import type { Expense, ISODate } from "@/core/models";
+import { isOutsideTrip, pickDefaultDay, unionDays } from "@/core/calendar/days";
 import { baseAmount } from "./balance";
+
+export { addDays } from "@/core/calendar/days";
 
 export interface ExpenseDay {
   date: ISODate;
@@ -18,18 +22,9 @@ export interface ExpenseDay {
   outsideTrip: boolean;
 }
 
-/** `2026-03-12` + 1 => `2026-03-13`. */
-export function addDays(date: ISODate, days: number): ISODate {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
-}
-
 /**
- * Los dias que merecen pestana.
- *
- * Es la union del rango del viaje con las fechas que tienen gastos: si alguien
- * registra un gasto antes de salir o despues de volver, sigue teniendo su dia y
- * no queda escondido.
+ * Los dias que merecen pestana: el rango del viaje mas las fechas con gastos,
+ * para que un gasto de antes de salir o de despues de volver no quede oculto.
  */
 export function expenseDays(
   startDate: ISODate,
@@ -44,22 +39,12 @@ export function expenseDays(
     stats.set(expense.date, entry);
   }
 
-  const dates = new Set<ISODate>(stats.keys());
-  if (startDate && endDate && startDate <= endDate) {
-    // Tope de seguridad: un rango absurdo no debe generar miles de pestanas.
-    for (let day = startDate, i = 0; day <= endDate && i < 400; day = addDays(day, 1), i++) {
-      dates.add(day);
-    }
-  }
-
-  return [...dates]
-    .sort((a, b) => a.localeCompare(b))
-    .map((date) => ({
-      date,
-      count: stats.get(date)?.count ?? 0,
-      total: stats.get(date)?.total ?? 0,
-      outsideTrip: !startDate || !endDate || date < startDate || date > endDate,
-    }));
+  return unionDays(startDate, endDate, [...stats.keys()]).map((date) => ({
+    date,
+    count: stats.get(date)?.count ?? 0,
+    total: stats.get(date)?.total ?? 0,
+    outsideTrip: isOutsideTrip(date, startDate, endDate),
+  }));
 }
 
 export function expensesOnDay(expenses: readonly Expense[], date: ISODate): Expense[] {
@@ -75,6 +60,5 @@ export function defaultDay(
   endDate: ISODate,
   today: ISODate,
 ): ISODate | null {
-  if (!startDate || !endDate) return null;
-  return today >= startDate && today <= endDate ? today : null;
+  return pickDefaultDay(startDate, endDate, today);
 }

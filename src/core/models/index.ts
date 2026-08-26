@@ -170,6 +170,10 @@ export interface Photo {
 export interface ItineraryItem {
   id: UUID;
   tripId: UUID;
+  /**
+   * Heredado. Ya no se rellena: enlazar la actividad a un lugar del viaje la
+   * hacia aparecer en el mapa general. Se mantiene por las filas antiguas.
+   */
   tripPlaceId: UUID | null;
   title: string;
   description: string | null;
@@ -177,6 +181,14 @@ export interface ItineraryItem {
   startTime: string | null;
   endTime: string | null;
   icon: string | null;
+  /**
+   * Ubicacion PROPIA de la actividad. Vive solo en el mapa del itinerario.
+   * `placeId` apunta al catalogo global `places`, nunca a `trip_places`.
+   */
+  latitude: number | null;
+  longitude: number | null;
+  locationName: string | null;
+  placeId: UUID | null;
   createdBy: UUID | null;
   createdAt: ISODateTime;
   tripPlace?: TripPlace | null;

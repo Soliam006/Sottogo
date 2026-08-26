@@ -201,6 +201,9 @@ alter table public.expenses
 create table if not exists public.itinerary_items (
   id            uuid primary key default gen_random_uuid(),
   trip_id       uuid not null references public.trips(id) on delete cascade,
+  -- Heredado. Ya NO se rellena desde el formulario: enlazar una actividad a un
+  -- `trip_place` la hacia aparecer en el mapa general del viaje. Se conserva
+  -- para no romper las filas antiguas.
   trip_place_id uuid references public.trip_places(id) on delete set null,
   title         text not null,
   description   text,
@@ -208,11 +211,43 @@ create table if not exists public.itinerary_items (
   start_time    time,
   end_time      time,
   icon          text,
+  -- Ubicacion PROPIA del itinerario.
+  --
+  -- `place_id` apunta al catalogo global `places`, no a `trip_places`: asi se
+  -- reutiliza el lugar real (nombre, direccion, provider + external_place_id)
+  -- sin duplicar datos y SIN que el punto entre en el mapa general, que solo
+  -- dibuja `trip_places`.
+  latitude      double precision,
+  longitude     double precision,
+  location_name text,
+  place_id      uuid references public.places(id) on delete set null,
   created_by    uuid references public.profiles(id) on delete set null,
   created_at    timestamptz not null default now()
 );
+-- Aditivo para bases ya desplegadas.
+alter table public.itinerary_items add column if not exists latitude double precision;
+alter table public.itinerary_items add column if not exists longitude double precision;
+alter table public.itinerary_items add column if not exists location_name text;
+alter table public.itinerary_items add column if not exists place_id uuid references public.places(id) on delete set null;
+
+-- Migracion: las actividades que ya apuntaban a un lugar del viaje se quedan
+-- con una copia de sus coordenadas y su nombre, para que sigan funcionando y
+-- aparezcan en el mapa del itinerario. No se borra ningun `trip_place`: puede
+-- que el viajero quiera conservarlo en el mapa general.
+update public.itinerary_items i
+   set latitude      = p.latitude,
+       longitude     = p.longitude,
+       location_name = p.name,
+       place_id      = p.id
+  from public.trip_places tp
+  join public.places p on p.id = tp.place_id
+ where i.trip_place_id = tp.id
+   and i.latitude is null;
 create index if not exists itinerary_trip_date_idx
   on public.itinerary_items (trip_id, date, start_time);
+-- Mapa del itinerario: actividades del viaje con coordenadas propias.
+create index if not exists itinerary_located_idx
+  on public.itinerary_items (trip_id, date) where latitude is not null and longitude is not null;
 
 -- ---------------------------------------------------------------------------
 -- MOMENTS

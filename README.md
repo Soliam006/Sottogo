@@ -115,6 +115,55 @@ lugar en todos los viajes, pero con notas, valoración y estado propios en cada 
 
 ---
 
+## Itinerario
+
+- **Un dia por pestana**, como en Gastos. Las pestanas son el rango del viaje
+  unido a las fechas que tengan actividades, asi que mover algo a un dia fuera
+  del viaje no lo esconde.
+- **El orden se DERIVA de (fecha, hora de inicio).** `itinerary_items` no tiene
+  columna `position` y no se guarda ninguna: cambiar la hora recoloca la
+  actividad, y cambiar la fecha la mueve de pestana. Sin hora va al final del
+  dia; a igualdad de hora desempata el titulo, para que el orden sea estable.
+- **Editar reutiliza el modal de alta.** El mismo formulario crea y actualiza
+  segun reciba o no una actividad. Al guardar, la pestana **sigue** a la
+  actividad: si le cambiaste la fecha, la vista salta a su nuevo dia.
+- Se anadio la **hora de fin** al formulario: existia en el modelo y en la base
+  de datos (`end_time`) pero no habia forma de rellenarla.
+
+`src/core/calendar/days.ts` es la base compartida por Gastos e Itinerario
+(aritmetica de fechas en UTC, union de dias y dia por defecto); cada seccion
+pone encima solo lo suyo.
+
+### Dos mapas, dos contextos
+
+```
+TripPlace          -> mapa GENERAL: lugares, fotos, momentos y gastos
+ItineraryLocation  -> mapa del ITINERARIO: solo actividades planificadas
+```
+
+Antes el formulario del itinerario usaba `PlacePicker`, que da de alta un
+`trip_place`; por eso el mapa general se llenaba de puntos que solo servian
+para planificar. Ahora la actividad guarda su ubicacion propia
+(`itinerary_items.latitude/longitude/location_name/place_id`) con el mismo
+selector que fotos, momentos y reservas.
+
+**`place_id` apunta al catalogo global `places`, no a `trip_places`.** Ahi esta
+la clave: se reutiliza el lugar real (nombre, direccion, provider +
+`external_place_id`) sin duplicar nada, y sin que el punto entre en el mapa
+general — que solo dibuja `trip_places`.
+
+- El tab **🗺️ Mapa** del Itinerario respeta la fecha seleccionada: marcadores
+  numerados por turno y una linea discontinua que une las paradas del dia. Es
+  una ayuda visual del recorrido, no una ruta calculada.
+- `itineraryLocation()` cae al `trip_place` heredado si una fila antigua aun no
+  tiene coordenadas propias, asi que **nada deja de funcionar** durante la
+  migracion.
+- La migracion del esquema copia las coordenadas del `trip_place` enlazado a la
+  actividad. **No borra ningun `trip_place`**: puede que el viajero quiera
+  conservarlo en el mapa general.
+
+---
+
 ## Gastos
 
 - **Pestanas por dia.** Una pestana por cada dia del viaje, mas "Todos". La
