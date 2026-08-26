@@ -26,7 +26,7 @@ type GroupBy = "date" | "place" | "person";
 type Scope = "gallery" | "all";
 
 export function GalleryView() {
-  const { trip, members } = useTrip();
+  const { trip, members, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
@@ -111,7 +111,7 @@ export function GalleryView() {
       <PageHeader
         title="Galería"
         subtitle={`${photos.length} recuerdo${photos.length === 1 ? "" : "s"} compartido${photos.length === 1 ? "" : "s"}`}
-        action={<Button onClick={() => setUploading(true)}>+ Foto</Button>}
+        action={canEdit ? <Button onClick={() => setUploading(true)}>+ Foto</Button> : undefined}
       />
 
       {error && <ErrorState message={error} onRetry={() => void refresh()} />}
@@ -123,18 +123,20 @@ export function GalleryView() {
           description={
             hiddenCount > 0
               ? `Hay ${hiddenCount} foto${hiddenCount === 1 ? "" : "s"} en gastos y momentos que aún no están en la galería.`
-              : "Sube las primeras fotos y asígnales un lugar para verlas en el mapa."
+              : canEdit
+                ? "Sube las primeras fotos y asígnales un lugar para verlas en el mapa."
+                : "Todavía no hay fotos en este viaje."
           }
           action={
             hiddenCount > 0 ? (
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={() => setUploading(true)}>Subir fotos</Button>
+                {canEdit && <Button onClick={() => setUploading(true)}>Subir fotos</Button>}
                 <Button variant="secondary" onClick={() => setScope("all")}>
                   Ver todas las fotos
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => setUploading(true)}>Subir fotos</Button>
+              canEdit ? <Button onClick={() => setUploading(true)}>Subir fotos</Button> : undefined
             )
           }
         />
@@ -188,9 +190,9 @@ export function GalleryView() {
           photos={photos}
           onNavigate={setSelected}
           onClose={() => setSelected(null)}
-          onToggleFeatured={(p) => void toggleFeatured(p)}
-          onDelete={(p) => void remove(p)}
-          onCreateRelated={setRelating}
+          onToggleFeatured={canEdit ? (p) => void toggleFeatured(p) : undefined}
+          onDelete={canEdit ? (p) => void remove(p) : undefined}
+          onCreateRelated={canEdit ? setRelating : undefined}
           uploader={members.find((m) => m.userId === selected.uploadedBy)?.profile ?? null}
         />
       )}

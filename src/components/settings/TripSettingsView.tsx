@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { TripRole } from "@/core/models";
+import { roleLabel } from "@/core/access";
 import { useRouter } from "next/navigation";
 import { formatHandle, type PublicProfile, type TripInvitation } from "@/core/models";
 import { CURRENCIES } from "@/core/currency";
@@ -14,6 +16,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { MemberIcon, VisitorIcon, type Icon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Misc";
@@ -46,6 +49,7 @@ export function TripSettingsView() {
 
   // --- Invitar --------------------------------------------------------------
   const [handle, setHandle] = useState("");
+  const [inviteRole, setInviteRole] = useState<TripRole>("member");
   const [found, setFound] = useState<PublicProfile | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -91,10 +95,21 @@ export function TripSettingsView() {
   async function invite() {
     if (!found || !session?.user) return;
     try {
-      await invitationsRepo.invite(getSupabaseBrowserClient(), tripId, session.user.id, found.id);
-      toast(`Invitación enviada a ${found.name}`);
+      await invitationsRepo.invite(
+        getSupabaseBrowserClient(),
+        tripId,
+        session.user.id,
+        found.id,
+        inviteRole,
+      );
+      toast(
+        inviteRole === "visitor"
+          ? `Invitación enviada a ${found.name} como visitante`
+          : `Invitación enviada a ${found.name}`,
+      );
       setFound(null);
       setHandle("");
+      setInviteRole("member");
       await invitations.refresh();
     } catch (err) {
       toast(errorMessage(err), "error");
@@ -152,7 +167,7 @@ export function TripSettingsView() {
                 </p>
               </div>
               <Badge tone={member.role === "owner" ? "brand" : "neutral"}>
-                {member.role === "owner" ? "Propietario" : "Participante"}
+                {roleLabel(member.role)}
               </Badge>
               {isOwner && member.role !== "owner" && (
                 <Button
@@ -197,14 +212,36 @@ export function TripSettingsView() {
             )}
 
             {found && (
-              <div className="mt-3 flex items-center gap-3 rounded-xl surface-1 px-3 py-2.5">
-                <Avatar profile={found} size="md" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium ink-primary">{found.name}</p>
-                  <p className="truncate font-mono text-xs ink-muted">{formatHandle(found)}</p>
+              <div className="mt-3 space-y-3 rounded-xl surface-1 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar profile={found} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium ink-primary">{found.name}</p>
+                    <p className="truncate font-mono text-xs ink-muted">{formatHandle(found)}</p>
+                  </div>
                 </div>
-                <Button size="sm" onClick={() => void invite()}>
-                  Invitar al viaje
+
+                {/* Con que rol entra. Se elige ANTES de enviar: la invitacion
+                    guarda el rol y al aceptarla se aplica tal cual. */}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <RoleChoice
+                    active={inviteRole === "member"}
+                    onClick={() => setInviteRole("member")}
+                    Icon={MemberIcon}
+                    title="Miembro"
+                    hint="Acceso completo al viaje."
+                  />
+                  <RoleChoice
+                    active={inviteRole === "visitor"}
+                    onClick={() => setInviteRole("visitor")}
+                    Icon={VisitorIcon}
+                    title="Visitante"
+                    hint="Solo ve el viaje y comenta momentos."
+                  />
+                </div>
+
+                <Button className="w-full" size="sm" onClick={() => void invite()}>
+                  Enviar invitación
                 </Button>
               </div>
             )}
@@ -309,5 +346,45 @@ export function TripSettingsView() {
 
       {confirmDialog}
     </div>
+  );
+}
+
+/** Una de las dos opciones de rol al invitar. */
+function RoleChoice({
+  active,
+  onClick,
+  Icon,
+  title,
+  hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  Icon: Icon;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors " +
+        (active
+          ? "border-brand-500 bg-brand-50/60 dark:bg-brand-900/20"
+          : "border-subtle hover:surface-2")
+      }
+    >
+      <Icon
+        size={18}
+        weight={active ? "fill" : "regular"}
+        className={active ? "mt-0.5 shrink-0 text-brand-600 dark:text-brand-300" : "mt-0.5 shrink-0 ink-muted"}
+        aria-hidden
+      />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium ink-primary">{title}</span>
+        <span className="block text-xs ink-muted">{hint}</span>
+      </span>
+    </button>
   );
 }

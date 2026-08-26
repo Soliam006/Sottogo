@@ -24,13 +24,13 @@ import { PlacePicker } from "./PlacePicker";
 type Filter = "all" | TripPlaceStatus;
 
 export function PlacesView() {
-  const { trip, tripPlaces, loading, refresh } = useTrip();
+  const { trip, tripPlaces, loading, refresh, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
 
   const { data: photos } = usePhotos(tripId);
-  const { data: expenses } = useExpenses(tripId);
+  const { data: expenses } = useExpenses(tripId, canEdit);
 
   const [filter, setFilter] = useState<Filter>("all");
   const [adding, setAdding] = useState(false);

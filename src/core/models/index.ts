@@ -9,7 +9,11 @@ export type UUID = string;
 export type ISODate = string;      // YYYY-MM-DD
 export type ISODateTime = string;  // RFC3339
 
-export type TripRole = "owner" | "member";
+/**
+ * `owner` y `member` editan; `visitor` solo mira (y comenta momentos).
+ * Ver `src/core/access` para el detalle de cada rol.
+ */
+export type TripRole = "owner" | "member" | "visitor";
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "cancelled";
 export type TripPlaceStatus = "wishlist" | "visited";
 
@@ -71,6 +75,8 @@ export interface TripInvitation {
   senderId: UUID;
   receiverId: UUID;
   status: InvitationStatus;
+  /** Rol con el que entrara al aceptar. */
+  role: TripRole;
   createdAt: ISODateTime;
   respondedAt: ISODateTime | null;
   trip?: Pick<Trip, "id" | "name" | "destination" | "startDate" | "endDate" | "coverImage">;

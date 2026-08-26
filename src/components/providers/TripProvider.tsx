@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo } from "react";
 import type { Trip, TripMember, TripPlace, TripRole } from "@/core/models";
+import { canEdit, isVisitor } from "@/core/access";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { placesRepo, tripsRepo } from "@/services/repositories";
 import { useAsyncData } from "@/hooks/useAsyncData";
@@ -20,6 +21,10 @@ interface TripContextValue {
   tripPlaces: TripPlace[];
   role: TripRole | null;
   isOwner: boolean;
+  /** Propietario o miembro: puede crear, editar y borrar. */
+  canEdit: boolean;
+  /** Solo lectura (mas comentar momentos). */
+  isVisitor: boolean;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -68,6 +73,8 @@ export function TripProvider({ tripId, children }: { tripId: string; children: R
       tripPlaces,
       role,
       isOwner: role === "owner",
+      canEdit: canEdit(role),
+      isVisitor: isVisitor(role),
       loading,
       error,
       refresh,

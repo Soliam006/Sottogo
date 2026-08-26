@@ -42,7 +42,7 @@ import { RelatedContentSection } from "@/components/content/RelatedContentSectio
  * fecha y una historia corta.
  */
 export function MomentsView() {
-  const { trip, members, role } = useTrip();
+  const { trip, members, role, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
   const { session } = useSession();
   const { toast } = useToast();
@@ -109,7 +109,7 @@ export function MomentsView() {
       <PageHeader
         title="Momentos"
         subtitle="Los recuerdos que querrás releer dentro de años."
-        action={<Button onClick={() => setCreating(true)}>+ Momento</Button>}
+        action={canEdit ? <Button onClick={() => setCreating(true)}>+ Momento</Button> : undefined}
       />
 
       {error && <ErrorState message={error} onRetry={() => void refresh()} />}
@@ -118,8 +118,12 @@ export function MomentsView() {
         <EmptyState
           icon={MomentIcon}
           title="Aún no hay momentos"
-          description="“Nuestro primer ramen”, “el atardecer en Kioto”… guarda lo que te importa."
-          action={<Button onClick={() => setCreating(true)}>Crear momento</Button>}
+          description={
+            canEdit
+              ? "“Nuestro primer ramen”, “el atardecer en Kioto”… guarda lo que te importa."
+              : "Todavía no hay momentos en este viaje."
+          }
+          action={canEdit ? <Button onClick={() => setCreating(true)}>Crear momento</Button> : undefined}
         />
       ) : (
         <ul className="space-y-1">
@@ -130,7 +134,7 @@ export function MomentsView() {
                 members={members}
                 comments={commentsByMoment.get(moment.id) ?? []}
                 currentUserId={userId}
-                canDelete={moment.createdBy === userId || role === "owner"}
+                canDelete={canEdit && (moment.createdBy === userId || role === "owner")}
                 onDelete={() => void remove(moment)}
                 onOpenPhoto={(photo, photos) => setLightbox({ photo, photos })}
                 onComment={(body) => addComment(moment, body)}

@@ -28,7 +28,8 @@ export function ItineraryMap({
   /** Actividades del dia, ya en orden cronologico. */
   items: ItineraryItem[];
   date: string;
-  onEdit: (item: ItineraryItem) => void;
+  /** Sin esto (visitantes) la ficha no ofrece editar. */
+  onEdit?: (item: ItineraryItem) => void;
 }) {
   const stops = useMemo(() => stopsForDay(items), [items]);
   const missing = countWithoutLocation(items);
@@ -63,8 +64,8 @@ export function ItineraryMap({
           title="Sin ubicaciones este día"
           description={
             items.length === 0
-              ? "Añade actividades y dales una ubicación para verlas aquí."
-              : "Las actividades de este día todavía no tienen ubicación. Edítalas para añadirla."
+              ? "Este día no tiene actividades con ubicación."
+              : "Las actividades de este día todavía no tienen ubicación."
           }
           className="border-0"
         />
@@ -145,11 +146,13 @@ export function ItineraryMap({
                 </p>
               )}
 
-              <div className="mt-3">
-                <Button variant="secondary" size="sm" onClick={() => onEdit(selected.item)}>
-                  Editar actividad
-                </Button>
-              </div>
+              {onEdit && (
+                <div className="mt-3">
+                  <Button variant="secondary" size="sm" onClick={() => onEdit(selected.item)}>
+                    Editar actividad
+                  </Button>
+                </div>
+              )}
             </div>
 
             <button

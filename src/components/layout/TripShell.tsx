@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { canAccessSection, homeSectionFor, type TripSection } from "@/core/access";
 import { flagEmoji, formatDateRange } from "@/lib/format";
 import { useTrip } from "@/components/providers/TripProvider";
 import { AvatarStack } from "@/components/ui/Avatar";
@@ -12,12 +13,35 @@ import { Modal } from "@/components/ui/Modal";
 import { BackIcon } from "@/components/ui/icons";
 import { NotificationsBell } from "./NotificationsBell";
 import { UserMenu } from "./UserMenu";
-import { TRIP_NAV, tripHref } from "./navigation";
+import { navFor, tripHref } from "./navigation";
 
 export function TripShell({ children }: { children: React.ReactNode }) {
-  const { trip, members, loading, error, refresh } = useTrip();
+  const { trip, members, role, loading, error, refresh } = useTrip();
   const pathname = usePathname();
+  const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+
+  const nav = useMemo(() => navFor(role), [role]);
+
+  /** Seccion que pide la URL actual, para poder validarla. */
+  const currentSection: TripSection | null = useMemo(() => {
+    if (!trip) return null;
+    const base = `/trips/${trip.id}`;
+    if (!pathname.startsWith(base)) return null;
+    const rest = pathname.slice(base.length).replace(/^\//, "").split("/")[0];
+    return (rest as TripSection) ?? "";
+  }, [pathname, trip]);
+
+  /**
+   * Guarda de ruta. Ocultar el enlace no basta: si alguien escribe la URL de
+   * una seccion prohibida, se le devuelve a la suya. La barrera de verdad esta
+   * en las politicas RLS, esto solo evita una pantalla rota.
+   */
+  useEffect(() => {
+    if (!trip || !role || currentSection === null) return;
+    if (canAccessSection(role, currentSection)) return;
+    router.replace(tripHref(trip.id, homeSectionFor(role)));
+  }, [trip, role, currentSection, router]);
 
   if (loading && !trip) {
     return <LoadingState label="Cargando viaje…" className="min-h-dvh" />;
@@ -43,8 +67,8 @@ export function TripShell({ children }: { children: React.ReactNode }) {
     return segment === "" ? pathname === href : pathname.startsWith(href);
   };
 
-  const primary = TRIP_NAV.filter((item) => item.primary);
-  const secondary = TRIP_NAV.filter((item) => !item.primary);
+  const primary = nav.filter((item) => item.primary);
+  const secondary = nav.filter((item) => !item.primary);
 
   return (
     <div className="flex min-h-dvh">
@@ -72,7 +96,7 @@ export function TripShell({ children }: { children: React.ReactNode }) {
 
         {/* Scroll interno intencionado: 10 secciones en pantallas bajas. */}
         <nav className="app-scroll-y min-h-0 flex-1 space-y-0.5 px-3 pb-6">
-          {TRIP_NAV.map((item) => {
+          {nav.map((item) => {
             const active = isActive(item.segment);
             return (
               <Link

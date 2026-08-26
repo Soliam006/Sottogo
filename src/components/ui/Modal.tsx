@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 
 /**
  * Dialogo responsive: hoja inferior en movil, modal centrado en desktop.
+ *
+ * Se pinta en un PORTAL a `document.body` a proposito. `position: fixed` no se
+ * resuelve contra la pantalla si algun ancestro tiene `transform`, `filter` o
+ * `backdrop-filter`: ese ancestro pasa a ser el bloque contenedor. Las barras
+ * de la app usan `backdrop-blur`, asi que un modal lanzado desde la campana de
+ * notificaciones quedaba encajado dentro de la cabecera y se salia de la
+ * pantalla. Sacandolo del arbol, ningun ancestro puede volver a capturarlo.
  */
 export function Modal({
   open,
@@ -37,9 +45,13 @@ export function Modal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  // El portal solo existe en el cliente: en el render del servidor no hay body.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  return (
+  if (!open || !mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center sm:p-4">
       <div
         className="absolute inset-0 animate-fade bg-black/45 backdrop-blur-sm"
@@ -84,6 +96,7 @@ export function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

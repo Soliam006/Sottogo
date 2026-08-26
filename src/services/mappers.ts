@@ -23,6 +23,8 @@ import type {
   UserProfile,
 } from "@/core/models";
 
+import { parseTripRole } from "@/core/access";
+
 export type Row = Record<string, unknown>;
 
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
@@ -70,7 +72,7 @@ export function toTripMember(row: Row): TripMember {
     id: str(row.id),
     tripId: str(row.trip_id),
     userId: str(row.user_id),
-    role: row.role === "owner" ? "owner" : "member",
+    role: parseTripRole(row.role),
     joinedAt: str(row.joined_at),
     profile: toProfile(row.profile as Row),
   };
@@ -84,6 +86,7 @@ export function toInvitation(row: Row): TripInvitation {
     senderId: str(row.sender_id),
     receiverId: str(row.receiver_id),
     status: (row.status as TripInvitation["status"]) ?? "pending",
+    role: (row.role as TripInvitation["role"]) ?? "member",
     createdAt: str(row.created_at),
     respondedAt: strOrNull(row.responded_at),
     trip: trip

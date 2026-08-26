@@ -21,10 +21,10 @@ const MEDAL_TONES = ["text-amber-400", "text-slate-400", "text-amber-700"];
  * "Resumen del viaje": la pantalla-recuerdo. Solo lectura, muy visual.
  */
 export function TripSummary() {
-  const { trip, tripPlaces, center, members } = useTrip();
+  const { trip, tripPlaces, center, members, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
 
-  const { data: expenses } = useExpenses(tripId);
+  const { data: expenses } = useExpenses(tripId, canEdit);
   const { data: photos } = usePhotos(tripId);
   const { data: moments } = useMoments(tripId);
 

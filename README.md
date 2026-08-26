@@ -115,6 +115,43 @@ lugar en todos los viajes, pero con notas, valoración y estado propios en cada 
 
 ---
 
+## Roles del viaje
+
+| Rol       | Puede |
+|-----------|-------|
+| `owner`   | todo, mas la configuracion del viaje |
+| `member`  | todo salvo la configuracion (comportamiento de siempre) |
+| `visitor` | ver mapa, itinerario, galeria y momentos, y **comentar** momentos |
+
+Un visitante NO ve gastos, lugares, preparacion, resumen ni configuracion.
+
+**La autorizacion de verdad esta en las politicas RLS, no en la interfaz.**
+`is_trip_member` significa "pertenece al viaje en cualquier rol" y da lectura
+del contenido compartido; el helper nuevo `is_trip_editor` significa
+"propietario o miembro" y es el que gobierna la escritura y las secciones
+privadas. Las tablas se reparten en dos grupos:
+
+```
+compartido  trip_places, photos, itinerary_items, moments
+            -> SELECT: is_trip_member   |  escritura: is_trip_editor
+privado     expenses, checklist_items, trip_bookings, journal_entries
+            -> TODO: is_trip_editor
+```
+
+Consecuencia: **un visitante no obtiene gastos ni consultando la API a mano**;
+la base de datos no le devuelve filas. `useExpenses(tripId, enabled)` ademas no
+llega ni a lanzar la peticion.
+
+`src/core/access` concentra la capa de interfaz: navegacion, guarda de rutas y
+botones leen de ahi, asi que no pueden discrepar. Si un visitante escribe a mano
+la URL de una seccion prohibida, `TripShell` lo devuelve al mapa.
+
+Las invitaciones guardan el rol elegido (`trip_invitations.role`, por defecto
+`member`) y `respond_to_invitation` lo aplica al aceptar. Las invitaciones que
+ya existieran se comportan igual que antes.
+
+---
+
 ## Itinerario
 
 - **Un dia por pestana**, como en Gastos. Las pestanas son el rango del viaje

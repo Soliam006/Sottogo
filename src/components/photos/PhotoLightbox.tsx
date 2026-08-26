@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Photo, PublicProfile } from "@/core/models";
 import { formatDate } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
@@ -29,6 +30,11 @@ export function PhotoLightbox({
 }) {
   const index = photos.findIndex((p) => p.id === photo.id);
 
+  // Igual que `Modal`: fuera del arbol, para que ningun ancestro con
+  // `backdrop-filter` o `transform` capture su `position: fixed`.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -39,7 +45,9 @@ export function PhotoLightbox({
     return () => document.removeEventListener("keydown", onKey);
   }, [index, photos, onNavigate, onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="fixed inset-0 z-[300] flex flex-col bg-black/92">
       <div className="flex items-center justify-between px-4 py-3 text-white">
         <span className="text-sm text-white/70 tabular-nums">
@@ -103,7 +111,8 @@ export function PhotoLightbox({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

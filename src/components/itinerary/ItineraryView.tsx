@@ -33,7 +33,7 @@ import { ITINERARY_ICONS, ItineraryItemIcon } from "@/components/ui/iconFor";
 import { ItineraryMap } from "./ItineraryMap";
 
 export function ItineraryView() {
-  const { trip } = useTrip();
+  const { trip, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
@@ -77,6 +77,9 @@ export function ItineraryView() {
     value: entry.date,
     label: entry.date === today ? "Hoy" : formatDate(entry.date, "compact"),
     count: entry.count,
+    // Un visitante no puede anadir actividades, asi que un dia vacio no le
+    // aporta nada. A quien edita si: es donde va a planificar.
+    hidden: !canEdit && entry.count === 0 && entry.date !== day,
   }));
 
   async function remove(item: ItineraryItem) {
@@ -99,10 +102,12 @@ export function ItineraryView() {
         title="Itinerario"
         subtitle="Día a día, con lugares reales."
         action={
-          <Button onClick={() => setEditing({ date: day ?? today, item: null })}>
-            <AddIcon size={16} weight="bold" aria-hidden />
-            Actividad
-          </Button>
+          canEdit ? (
+            <Button onClick={() => setEditing({ date: day ?? today, item: null })}>
+              <AddIcon size={16} weight="bold" aria-hidden />
+              Actividad
+            </Button>
+          ) : undefined
         }
       />
 
@@ -125,14 +130,17 @@ export function ItineraryView() {
             />
           </div>
 
-          {/* Un dia por pestana: el itinerario deja de ser un scroll infinito. */}
-          <Tabs value={day} onChange={setPickedDay} options={dayTabs} />
+          {/* Un dia por pestana: el itinerario deja de ser un scroll infinito.
+              Con una sola pestana visible la barra no aporta nada. */}
+          {dayTabs.filter((t) => !t.hidden).length > 1 && (
+            <Tabs value={day} onChange={setPickedDay} options={dayTabs} />
+          )}
 
           {view === "map" ? (
             <ItineraryMap
               items={dayItems}
               date={day}
-              onEdit={(item) => setEditing({ date: item.date, item })}
+              onEdit={canEdit ? (item) => setEditing({ date: item.date, item }) : undefined}
             />
           ) : (
           <Card className={day === today ? "border-brand-400 p-5" : "p-5"}>
@@ -146,10 +154,12 @@ export function ItineraryView() {
                   </span>
                 )}
               </h2>
-              <Button variant="ghost" size="sm" onClick={() => setEditing({ date: day, item: null })}>
-                <AddIcon size={15} weight="bold" aria-hidden />
-                Añadir
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setEditing({ date: day, item: null })}>
+                  <AddIcon size={15} weight="bold" aria-hidden />
+                  Añadir
+                </Button>
+              )}
             </div>
 
             {dayItems.length === 0 ? (
@@ -184,22 +194,24 @@ export function ItineraryView() {
                       )}
                     </span>
 
-                    <span className="flex shrink-0 self-start gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing({ date: item.date, item })}
-                      >
-                        Editar
-                      </Button>
-                      <button
-                        onClick={() => void remove(item)}
-                        aria-label={`Eliminar ${item.title}`}
-                        className="rounded-lg p-1.5 ink-muted transition-opacity hover:text-rose-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                      >
-                        <DeleteIcon size={15} aria-hidden />
-                      </button>
-                    </span>
+                    {canEdit && (
+                      <span className="flex shrink-0 self-start gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditing({ date: item.date, item })}
+                        >
+                          Editar
+                        </Button>
+                        <button
+                          onClick={() => void remove(item)}
+                          aria-label={`Eliminar ${item.title}`}
+                          className="rounded-lg p-1.5 ink-muted transition-opacity hover:text-rose-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                        >
+                          <DeleteIcon size={15} aria-hidden />
+                        </button>
+                      </span>
+                    )}
                   </li>
                 ))}
               </ol>

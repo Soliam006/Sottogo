@@ -11,7 +11,7 @@ create extension if not exists "unaccent";
 -- ENUMS
 -- ---------------------------------------------------------------------------
 do $$ begin
-  create type trip_role         as enum ('owner', 'member');
+  create type trip_role         as enum ('owner', 'member', 'visitor');
   create type invitation_status as enum ('pending', 'accepted', 'rejected', 'cancelled');
   create type trip_place_status as enum ('wishlist', 'visited');
   create type expense_category  as enum (
@@ -43,6 +43,14 @@ create index if not exists profiles_name_idx on public.profiles (lower(name));
 -- ---------------------------------------------------------------------------
 -- TRIPS
 -- ---------------------------------------------------------------------------
+-- Bases ya desplegadas: anadir el rol de visitante.
+--
+-- Va en su propia sentencia y en el resto del fichero el rol se compara SIEMPRE
+-- con `::text`: PostgreSQL no deja usar una etiqueta de enum recien creada
+-- dentro de la misma transaccion, y el editor SQL de Supabase envuelve el
+-- script entero en una.
+alter type trip_role add value if not exists 'visitor';
+
 create table if not exists public.trips (
   id            uuid primary key default gen_random_uuid(),
   owner_id      uuid not null references public.profiles(id) on delete cascade,
@@ -80,10 +88,15 @@ create table if not exists public.trip_invitations (
   sender_id    uuid not null references public.profiles(id) on delete cascade,
   receiver_id  uuid not null references public.profiles(id) on delete cascade,
   status       invitation_status not null default 'pending',
+  -- Rol con el que entrara al aceptar. `member` por defecto: las invitaciones
+  -- que ya existan se comportan exactamente como hasta ahora.
+  role         trip_role not null default 'member',
   created_at   timestamptz not null default now(),
   responded_at timestamptz,
   constraint invitation_not_self check (sender_id <> receiver_id)
 );
+alter table public.trip_invitations
+  add column if not exists role trip_role not null default 'member';
 -- Una sola invitacion pendiente por (viaje, receptor)
 create unique index if not exists trip_invitations_pending_unique
   on public.trip_invitations (trip_id, receiver_id) where status = 'pending';
@@ -464,6 +477,33 @@ as $$
   );
 $$;
 
+/*
+ * Autorizacion en dos niveles:
+ *
+ *   is_trip_member  -> pertenece al viaje en CUALQUIER rol. Da lectura del
+ *                      contenido compartido (mapa, fotos, momentos, itinerario)
+ *                      y acceso a los ficheros del bucket.
+ *   is_trip_editor  -> propietario o miembro. Da escritura, y ademas es la
+ *                      puerta de las secciones privadas: gastos, preparacion y
+ *                      diario. Un visitante nunca la pasa.
+ *
+ * El rol se compara por texto a proposito (ver la nota del `alter type`).
+ */
+create or replace function public.is_trip_editor(p_trip uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.trip_members
+    where trip_id = p_trip
+      and user_id = auth.uid()
+      and role::text in ('owner', 'member')
+  );
+$$;
+
 -- El creador entra automaticamente como owner
 create or replace function public.handle_new_trip()
 returns trigger
@@ -528,8 +568,9 @@ begin
    returning * into v_inv;
 
   if p_accept then
+    -- Entra con el rol que eligio quien invito, no siempre como miembro.
     insert into public.trip_members (trip_id, user_id, role)
-    values (v_inv.trip_id, v_inv.receiver_id, 'member')
+    values (v_inv.trip_id, v_inv.receiver_id, v_inv.role)
     on conflict (trip_id, user_id) do nothing;
   end if;
 
@@ -658,7 +699,8 @@ drop policy if exists invitations_insert on public.trip_invitations;
 create policy invitations_insert on public.trip_invitations
   for insert with check (
     sender_id = auth.uid()
-    and public.is_trip_member(trip_id)
+    -- Un visitante no invita a nadie.
+    and public.is_trip_editor(trip_id)
     and not exists (
       select 1 from public.trip_members m
        where m.trip_id = trip_invitations.trip_id and m.user_id = trip_invitations.receiver_id
@@ -682,16 +724,43 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['trip_places','expenses','photos','itinerary_items',
-                           'moments','journal_entries','checklist_items',
+  -- CONTENIDO COMPARTIDO: lo ve todo el viaje (visitantes incluidos), pero
+  -- solo lo edita quien puede editar.
+  foreach t in array array['trip_places','photos','itinerary_items','moments']
+  loop
+    execute format('drop policy if exists %I_member_all on public.%I', t, t);
+    execute format('drop policy if exists %I_member_read on public.%I', t, t);
+    execute format('drop policy if exists %I_editor_write on public.%I', t, t);
+
+    execute format($p$
+      create policy %I_member_read on public.%I
+        for select using (public.is_trip_member(trip_id))
+    $p$, t, t);
+
+    -- `for all` con USING+WITH CHECK cubre insert, update y delete; el SELECT
+    -- de arriba es mas permisivo y manda para la lectura.
+    execute format($p$
+      create policy %I_editor_write on public.%I
+        for all
+        using (public.is_trip_editor(trip_id))
+        with check (public.is_trip_editor(trip_id))
+    $p$, t, t);
+  end loop;
+
+  -- SECCIONES PRIVADAS: gastos, preparacion y diario. Un visitante no las lee
+  -- ni siquiera con una consulta a mano: la base de datos no le devuelve nada.
+  foreach t in array array['expenses','journal_entries','checklist_items',
                            'trip_bookings']
   loop
     execute format('drop policy if exists %I_member_all on public.%I', t, t);
+    execute format('drop policy if exists %I_member_read on public.%I', t, t);
+    execute format('drop policy if exists %I_editor_write on public.%I', t, t);
+
     execute format($p$
-      create policy %I_member_all on public.%I
+      create policy %I_editor_all on public.%I
         for all
-        using (public.is_trip_member(trip_id))
-        with check (public.is_trip_member(trip_id))
+        using (public.is_trip_editor(trip_id))
+        with check (public.is_trip_editor(trip_id))
     $p$, t, t);
   end loop;
 end $$;
@@ -716,12 +785,19 @@ create policy moment_comments_delete on public.moment_comments
   for delete using (author_id = auth.uid() or public.is_trip_owner(trip_id));
 
 drop policy if exists moment_photos_member_all on public.moment_photos;
-create policy moment_photos_member_all on public.moment_photos
+drop policy if exists moment_photos_member_read on public.moment_photos;
+create policy moment_photos_member_read on public.moment_photos
+  for select
+  using (exists (select 1 from public.moments m
+                  where m.id = moment_id and public.is_trip_member(m.trip_id)));
+
+drop policy if exists moment_photos_editor_write on public.moment_photos;
+create policy moment_photos_editor_write on public.moment_photos
   for all
   using (exists (select 1 from public.moments m
-                  where m.id = moment_id and public.is_trip_member(m.trip_id)))
+                  where m.id = moment_id and public.is_trip_editor(m.trip_id)))
   with check (exists (select 1 from public.moments m
-                       where m.id = moment_id and public.is_trip_member(m.trip_id)));
+                       where m.id = moment_id and public.is_trip_editor(m.trip_id)));
 
 -- ===========================================================================
 --  STORAGE
@@ -756,18 +832,20 @@ create policy trip_media_read on storage.objects
     and public.is_trip_member(public.storage_trip_id(name))
   );
 
+-- Leer los ficheros lo puede hacer todo el viaje (el visitante ve las fotos);
+-- subirlos y borrarlos, solo quien puede editar.
 drop policy if exists trip_media_write on storage.objects;
 create policy trip_media_write on storage.objects
   for insert with check (
     bucket_id = 'trip-media'
-    and public.is_trip_member(public.storage_trip_id(name))
+    and public.is_trip_editor(public.storage_trip_id(name))
   );
 
 drop policy if exists trip_media_delete on storage.objects;
 create policy trip_media_delete on storage.objects
   for delete using (
     bucket_id = 'trip-media'
-    and public.is_trip_member(public.storage_trip_id(name))
+    and public.is_trip_editor(public.storage_trip_id(name))
   );
 
 -- ===========================================================================

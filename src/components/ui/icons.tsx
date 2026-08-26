@@ -33,6 +33,7 @@ import { ClipboardTextIcon } from "@phosphor-icons/react/dist/ssr/ClipboardText"
 import { CoffeeIcon } from "@phosphor-icons/react/dist/ssr/Coffee";
 import { CompassIcon } from "@phosphor-icons/react/dist/ssr/Compass";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/ssr/Crosshair";
+import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { DotsThreeIcon } from "@phosphor-icons/react/dist/ssr/DotsThree";
 import { FlowerIcon } from "@phosphor-icons/react/dist/ssr/Flower";
 import { ForkKnifeIcon } from "@phosphor-icons/react/dist/ssr/ForkKnife";
@@ -64,6 +65,7 @@ import { TicketIcon } from "@phosphor-icons/react/dist/ssr/Ticket";
 import { TrainIcon } from "@phosphor-icons/react/dist/ssr/Train";
 import { TrashIcon } from "@phosphor-icons/react/dist/ssr/Trash";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr/Trophy";
+import { UserIcon } from "@phosphor-icons/react/dist/ssr/User";
 import { WalletIcon } from "@phosphor-icons/react/dist/ssr/Wallet";
 import { WarningIcon as PhWarning } from "@phosphor-icons/react/dist/ssr/Warning";
 import { XIcon } from "@phosphor-icons/react/dist/ssr/X";
@@ -96,6 +98,9 @@ export const LocateIcon = CrosshairIcon;
 export const PinIcon = PushPinIcon;
 export const NotificationIcon = BellIcon;
 export const ListIcon = ListBulletsIcon;
+// Roles del viaje.
+export const MemberIcon = UserIcon;
+export const VisitorIcon = EyeIcon;
 export const CommentIcon = ChatCircleIcon;
 export const ShareIcon = ShareNetworkIcon;
 export const MoreIcon = DotsThreeIcon;

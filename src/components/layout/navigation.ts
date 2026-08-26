@@ -12,12 +12,15 @@ import {
   type Icon,
 } from "@/components/ui/icons";
 
+import type { TripRole } from "@/core/models";
+import { canAccessSection, type TripSection } from "@/core/access";
+
 export interface NavItem {
   key: string;
   label: string;
   Icon: Icon;
   /** Segmento relativo a /trips/[tripId]. Cadena vacia = inicio. */
-  segment: string;
+  segment: TripSection;
   primary?: boolean;
 }
 
@@ -36,4 +39,14 @@ export const TRIP_NAV: NavItem[] = [
 
 export function tripHref(tripId: string, segment: string): string {
   return segment ? `/trips/${tripId}/${segment}` : `/trips/${tripId}`;
+}
+
+/**
+ * Navegacion del rol.
+ *
+ * Un visitante no ve huecos ni botones apagados: sencillamente su menu tiene
+ * cuatro secciones. Las que no puede abrir no existen para el.
+ */
+export function navFor(role: TripRole | null): NavItem[] {
+  return TRIP_NAV.filter((item) => canAccessSection(role, item.segment));
 }

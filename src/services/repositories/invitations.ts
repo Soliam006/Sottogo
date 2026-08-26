@@ -1,4 +1,4 @@
-import type { PublicProfile, TripInvitation, UUID } from "@/core/models";
+import type { PublicProfile, TripInvitation, TripRole, UUID } from "@/core/models";
 import { parseHandle } from "@/core/identity/handle";
 import { asRow, asRows, type Db, RepositoryError, unwrap, unwrapVoid } from "./base";
 import { toInvitation, toProfile } from "@/services/mappers";
@@ -29,10 +29,20 @@ export const invitationsRepo = {
     return rows.length ? toProfile(rows[0]) : null;
   },
 
-  async invite(db: Db, tripId: UUID, senderId: UUID, receiverId: UUID): Promise<TripInvitation> {
+  /**
+   * Envia una invitacion con el rol elegido. Por defecto `member`, que es como
+   * se comportaba antes de existir los visitantes.
+   */
+  async invite(
+    db: Db,
+    tripId: UUID,
+    senderId: UUID,
+    receiverId: UUID,
+    role: TripRole = "member",
+  ): Promise<TripInvitation> {
     const result = await db
       .from("trip_invitations")
-      .insert({ trip_id: tripId, sender_id: senderId, receiver_id: receiverId })
+      .insert({ trip_id: tripId, sender_id: senderId, receiver_id: receiverId, role })
       .select(INVITATION_SELECT)
       .single();
 

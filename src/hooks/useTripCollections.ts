@@ -24,14 +24,21 @@ import { attachSignedUrls } from "@/services/storage/photoStorage";
 import { useAsyncData, type AsyncState } from "./useAsyncData";
 import { useRealtimeTables } from "./useRealtimeTable";
 
-/** Gastos del viaje, sincronizados en tiempo real entre participantes. */
-export function useExpenses(tripId: string): AsyncState<Expense[]> {
+/**
+ * Gastos del viaje, sincronizados en tiempo real entre participantes.
+ *
+ * `enabled` existe para los VISITANTES: los gastos son informacion privada y no
+ * deben ni pedirse. Las politicas RLS ya se los negarian, pero asi ni siquiera
+ * sale la peticion ni se abre la suscripcion.
+ */
+export function useExpenses(tripId: string, enabled = true): AsyncState<Expense[]> {
   const load = useCallback(
-    () => expensesRepo.listByTrip(getSupabaseBrowserClient(), tripId),
-    [tripId],
+    async () =>
+      enabled && tripId ? expensesRepo.listByTrip(getSupabaseBrowserClient(), tripId) : [],
+    [tripId, enabled],
   );
-  const state = useAsyncData<Expense[]>(load, [tripId]);
-  useRealtimeTables(tripId, ["expenses"], () => void state.refresh());
+  const state = useAsyncData<Expense[]>(load, [tripId, enabled]);
+  useRealtimeTables(enabled ? tripId : null, ["expenses"], () => void state.refresh());
   return state;
 }
 

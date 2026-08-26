@@ -51,12 +51,12 @@ const STAT_GLYPH = {
  * encima. De mapa de marcadores a forma de explorar los recuerdos del viaje.
  */
 export function TripMapView() {
-  const { trip, tripPlaces, members, center } = useTrip();
+  const { trip, tripPlaces, members, center, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
 
   const { data: photos } = usePhotos(tripId);
   const { data: moments } = useMoments(tripId);
-  const { data: expenses } = useExpenses(tripId);
+  const { data: expenses } = useExpenses(tripId, canEdit);
 
   const [mode, setMode] = useState<Mode>("places");
   const [view, setView] = useState<View>({ level: "global" });
@@ -249,7 +249,7 @@ export function TripMapView() {
           </div>
         )}
 
-        {!isMemories && (
+        {!isMemories && canEdit && (
           <Button className="pointer-events-auto shrink-0 shadow-lg" onClick={() => setAdding(true)}>
             + Lugar
           </Button>

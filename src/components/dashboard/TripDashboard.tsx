@@ -18,10 +18,10 @@ import { PhotoTile } from "@/components/photos/PhotoGrid";
  * Pantalla principal del viaje: un resumen visual, sin sobrecargar de botones.
  */
 export function TripDashboard() {
-  const { trip, members, tripPlaces, center } = useTrip();
+  const { trip, members, tripPlaces, center, canEdit } = useTrip();
   const tripId = trip?.id ?? "";
 
-  const { data: expenses } = useExpenses(tripId);
+  const { data: expenses } = useExpenses(tripId, canEdit);
   const { data: photos } = usePhotos(tripId);
   const { data: itinerary } = useItinerary(tripId);
   const { data: moments } = useMoments(tripId);

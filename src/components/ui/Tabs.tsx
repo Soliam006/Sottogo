@@ -10,6 +10,14 @@ export interface TabOption<T extends string> {
   Icon?: Icon;
   /** Contador opcional (nº de vuelos, de hoteles…). */
   count?: number;
+  /**
+   * Seguro de la pestana: `true` la retira de la barra.
+   *
+   * Sirve para no ensenar apartados que no aportan nada a quien mira. Un
+   * visitante, por ejemplo, no gana nada con un dia vacio del itinerario: no
+   * puede anadir actividades, asi que esa pestana solo le hace ruido.
+   */
+  hidden?: boolean;
 }
 
 /**
@@ -34,6 +42,7 @@ export function Tabs<T extends string>({
   className?: string;
 }) {
   const barRef = useRef<HTMLDivElement | null>(null);
+  const visible = options.filter((option) => !option.hidden);
 
   // Con la barra desplazada, la pestana activa puede quedar fuera de vista (al
   // volver a la seccion, o al cambiarla desde fuera). Se trae sola.
@@ -52,7 +61,7 @@ export function Tabs<T extends string>({
         className,
       )}
     >
-      {options.map((option) => {
+      {visible.map((option) => {
         const active = option.value === value;
         return (
           <button
