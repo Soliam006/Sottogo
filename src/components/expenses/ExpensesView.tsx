@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import type { Expense } from "@/core/models";
 import { baseAmount, computeBalance, totalsByCategory } from "@/core/expenses/balance";
 import { categoryMeta } from "@/core/expenses/categories";
-import { formatDate, formatMoney } from "@/lib/format";
+import { defaultDay, expenseDays, expensesOnDay } from "@/core/expenses/days";
+import { formatDate, formatMoney, todayISO } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { expensesRepo } from "@/services/repositories";
@@ -14,7 +15,8 @@ import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { ExpenseIcon } from "@/components/ui/icons";
+import { ExpenseIcon, ItineraryIcon } from "@/components/ui/icons";
+import { Tabs, type TabOption } from "@/components/ui/Tabs";
 import { CategoryIcon } from "@/components/ui/iconFor";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -34,6 +36,39 @@ export function ExpensesView() {
   const [creating, setCreating] = useState(false);
 
   const expenses = useMemo(() => data ?? [], [data]);
+
+  // --- Filtro por dia -------------------------------------------------------
+  const days = useMemo(
+    () => expenseDays(trip?.startDate ?? "", trip?.endDate ?? "", expenses),
+    [trip?.startDate, trip?.endDate, expenses],
+  );
+
+  // Estando de viaje se abre en el dia de hoy; fuera del viaje, en "Todos".
+  // `undefined` = aun no se ha elegido nada a mano.
+  const [pickedDay, setPickedDay] = useState<string | null | undefined>(undefined);
+  const today = todayISO();
+  const day =
+    pickedDay === undefined
+      ? defaultDay(trip?.startDate ?? "", trip?.endDate ?? "", today)
+      : pickedDay;
+
+  const visibleExpenses = useMemo(
+    () => (day === null ? expenses : expensesOnDay(expenses, day)),
+    [expenses, day],
+  );
+  const dayTotal = useMemo(
+    () => visibleExpenses.reduce((sum, e) => sum + baseAmount(e), 0),
+    [visibleExpenses],
+  );
+
+  const dayTabs: TabOption<string>[] = [
+    { value: "all", label: "Todos", count: expenses.length },
+    ...days.map((entry) => ({
+      value: entry.date,
+      label: entry.date === today ? "Hoy" : formatDate(entry.date, "compact"),
+      count: entry.count,
+    })),
+  ];
 
   // Moneda local mas usada en el viaje: la alternativa natural para el toggle.
   const localCurrency = useMemo(() => {
@@ -104,21 +139,86 @@ export function ExpensesView() {
         </p>
       )}
 
+      {/* En movil manda el balance: es lo primero que se quiere ver al abrir
+          Gastos. En escritorio vuelve a su columna de la derecha con `order`. */}
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <Card className="p-5">
-          <h2 className="text-base font-semibold ink-primary">Movimientos</h2>
+        <div className="space-y-5 lg:order-2">
+          <Card className="p-5">
+            <h2 className="text-base font-semibold ink-primary">Balance</h2>
+            <div className="mt-4">
+              <BalancePanel
+                balance={balance}
+                members={members}
+                currency={display.currency}
+                convert={display.convert}
+              />
+            </div>
+          </Card>
 
-          {expenses.length === 0 ? (
-            <EmptyState
-              icon={ExpenseIcon}
-              title="Sin gastos todavía"
-              description="Registra el primero: importe, categoría, quién pagó y dónde."
-              action={<Button onClick={() => setCreating(true)}>Añadir gasto</Button>}
-              className="mt-4 border-0"
+          <Card className="p-5">
+            <h2 className="text-base font-semibold ink-primary">Por categoría</h2>
+            <div className="mt-4">
+              <CategoryBars
+                totals={categories}
+                currency={display.currency}
+                convert={display.convert}
+              />
+            </div>
+          </Card>
+        </div>
+
+        <Card className="p-5 lg:order-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h2 className="text-base font-semibold ink-primary">Movimientos</h2>
+            {day !== null && (
+              <p className="text-sm tabular-nums ink-muted">
+                {formatDate(day, "long")} ·{" "}
+                <span className="font-semibold ink-primary">
+                  {formatMoney(display.convert(dayTotal), display.currency)}
+                </span>
+              </p>
+            )}
+          </div>
+
+          {/* Un dia por pestana: evita una lista interminable en viajes largos.
+              El balance y las categorias siguen siendo de TODO el viaje. */}
+          {days.length > 1 && (
+            <Tabs
+              className="mt-3"
+              value={day ?? "all"}
+              onChange={(value) => setPickedDay(value === "all" ? null : value)}
+              options={dayTabs}
             />
+          )}
+
+          {visibleExpenses.length === 0 ? (
+            day !== null ? (
+              <EmptyState
+                icon={ItineraryIcon}
+                title={`Sin gastos el ${formatDate(day, "long")}`}
+                description="Ese día no hay nada registrado todavía."
+                action={
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => setCreating(true)}>Añadir gasto</Button>
+                    <Button variant="secondary" onClick={() => setPickedDay(null)}>
+                      Ver todos
+                    </Button>
+                  </div>
+                }
+                className="mt-4 border-0"
+              />
+            ) : (
+              <EmptyState
+                icon={ExpenseIcon}
+                title="Sin gastos todavía"
+                description="Registra el primero: importe, categoría, quién pagó y dónde."
+                action={<Button onClick={() => setCreating(true)}>Añadir gasto</Button>}
+                className="mt-4 border-0"
+              />
+            )
           ) : (
             <ul className="mt-4 divide-y divide-[var(--border-subtle)]">
-              {expenses.map((expense) => {
+              {visibleExpenses.map((expense) => {
                 const meta = categoryMeta(expense.category);
                 const payer = members.find((m) => m.userId === expense.paidBy)?.profile;
                 const converted = display.convert(baseAmount(expense));
@@ -170,31 +270,6 @@ export function ExpensesView() {
             </ul>
           )}
         </Card>
-
-        <div className="space-y-5">
-          <Card className="p-5">
-            <h2 className="text-base font-semibold ink-primary">Balance</h2>
-            <div className="mt-4">
-              <BalancePanel
-                balance={balance}
-                members={members}
-                currency={display.currency}
-                convert={display.convert}
-              />
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <h2 className="text-base font-semibold ink-primary">Por categoría</h2>
-            <div className="mt-4">
-              <CategoryBars
-                totals={categories}
-                currency={display.currency}
-                convert={display.convert}
-              />
-            </div>
-          </Card>
-        </div>
       </div>
 
       <ExpenseFormModal

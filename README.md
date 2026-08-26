@@ -115,6 +115,21 @@ lugar en todos los viajes, pero con notas, valoración y estado propios en cada 
 
 ---
 
+## Gastos
+
+- **Pestanas por dia.** Una pestana por cada dia del viaje, mas "Todos". La
+  logica vive en `src/core/expenses/days.ts` y las pestanas son la union del
+  rango del viaje con las fechas que tienen gastos: un gasto registrado antes de
+  salir o despues de volver tiene su dia y nunca queda escondido.
+  Estando de viaje la vista se abre en **Hoy**; fuera del viaje, en "Todos".
+- **El filtro solo afecta a Movimientos.** Balance y Por categoria son de TODO
+  el viaje: quien debe a quien no tiene sentido por dias.
+- **En movil el Balance va primero.** Es lo que se quiere ver al abrir Gastos.
+  En escritorio vuelve a su columna de la derecha con `lg:order-2`, asi que la
+  distribucion de siempre no cambia.
+
+---
+
 ## Momentos
 
 Muro de tarjetas donde manda la fotografia: ocupa el ancho completo de la

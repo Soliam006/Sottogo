@@ -21,10 +21,17 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat(LOCALE).format(value);
 }
 
-export function formatDate(iso: string, style: "short" | "long" | "day" = "short"): string {
+export function formatDate(
+  iso: string,
+  style: "short" | "long" | "day" | "compact" = "short",
+): string {
   const date = parseISODate(iso);
   if (!date) return iso;
 
+  // "12 mar" — para pestanas y etiquetas donde el ano sobra.
+  if (style === "compact") {
+    return new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "short" }).format(date);
+  }
   if (style === "long") {
     return new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", year: "numeric" }).format(date);
   }
