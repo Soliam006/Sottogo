@@ -168,7 +168,10 @@ function BookingsPanel({
           </div>
 
           <ul className="space-y-3">
-            {bookings.map((booking) => (
+            {bookings.sort(
+              (a, b) =>
+                new Date(a.startAt!).getTime() - new Date(b.endAt!).getTime()
+            ). map((booking) => (
               <li key={booking.id}>
                 <BookingCard
                   booking={booking}
