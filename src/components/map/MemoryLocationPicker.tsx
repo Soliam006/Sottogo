@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PlaceSearchResult } from "@/core/places/types";
 import { geolocationMessage, type MemoryLocation } from "@/core/map/location";
 import { placesRepo } from "@/services/repositories";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { reverseGeocode } from "@/services/api/places";
+import { filterSaved, savedLocations, stayPlaceIds, type SavedLocation } from "@/core/map/saved";
+import type { Place, UUID } from "@/core/models";
 import { useTrip } from "@/components/providers/TripProvider";
+import { useBookings } from "@/hooks/useTripCollections";
 import { Modal } from "@/components/ui/Modal";
-import { LocateIcon, MapIcon, SearchIcon } from "@/components/ui/icons";
+import { LocateIcon, MapIcon, PlaceIcon, SearchIcon, StayIcon } from "@/components/ui/icons";
 import { Button, Spinner } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/Misc";
+import { TextInput } from "@/components/ui/Field";
 import { PlaceSearchInput } from "@/components/places/PlaceSearchInput";
 import { MapCanvas } from "./MapCanvas";
 
-type Tab = "current" | "search" | "map";
+type Tab = "saved" | "current" | "search" | "map";
 
 /**
  * "¿Dónde ocurrió?" — ubicacion EXACTA de una foto o un momento.
@@ -36,9 +40,49 @@ export function MemoryLocationPicker({
   title?: string;
   description?: string;
 }) {
-  const { center } = useTrip();
+  const { trip, tripPlaces, center, canEdit } = useTrip();
 
+  // Lo que el viaje ya tiene guardado: lugares del mapa y alojamientos.
+  const { data: bookings } = useBookings(trip?.id ?? "", open && canEdit);
+  const [stayPlaces, setStayPlaces] = useState<Place[]>([]);
+
+  // Los alojamientos solo guardan una referencia al lugar; hay que resolverla
+  // para poder situarlos.
+  useEffect(() => {
+    const ids = stayPlaceIds(bookings ?? []);
+    if (!open || ids.length === 0) {
+      setStayPlaces([]);
+      return;
+    }
+    let alive = true;
+    placesRepo
+      .listByIds(getSupabaseBrowserClient(), ids)
+      .then((places) => {
+        if (alive) setStayPlaces(places);
+      })
+      .catch(() => {
+        if (alive) setStayPlaces([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [open, bookings]);
+
+  const saved = useMemo(() => {
+    const byId = new Map<UUID, Place>(stayPlaces.map((p) => [p.id, p]));
+    return savedLocations(tripPlaces, bookings ?? [], byId);
+  }, [tripPlaces, bookings, stayPlaces]);
+
+  const [savedQuery, setSavedQuery] = useState("");
+  const savedResults = useMemo(() => filterSaved(saved, savedQuery), [saved, savedQuery]);
+
+  // Si hay algo guardado, esa es la via mas rapida y abre por defecto.
   const [tab, setTab] = useState<Tab>("current");
+  useEffect(() => {
+    if (open) setTab(saved.length > 0 ? "saved" : "current");
+    // Solo al abrir: cambiar de pestana a mano no debe revertirse.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const [pending, setPending] = useState<{ latitude: number; longitude: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +124,20 @@ export function MemoryLocationPicker({
       },
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
     );
+  }
+
+  // --- 0. Reutilizar algo ya guardado ---------------------------------------
+  //
+  // Copia sus coordenadas; NO crea ningun `trip_place`, asi que el mapa general
+  // no cambia por elegir aqui.
+  function chooseSaved(entry: SavedLocation) {
+    finish({
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      name: entry.name,
+      placeId: entry.placeId,
+      source: "saved",
+    });
   }
 
   // --- 2. Buscar ubicacion --------------------------------------------------
@@ -152,11 +210,71 @@ export function MemoryLocationPicker({
             setError(null);
           }}
           options={[
+            ...(saved.length > 0
+              ? [{ value: "saved" as Tab, label: "Del viaje", Icon: PlaceIcon }]
+              : []),
             { value: "current", label: "Mi ubicación", Icon: LocateIcon },
             { value: "search", label: "Buscar", Icon: SearchIcon },
             { value: "map", label: "En el mapa", Icon: MapIcon },
           ]}
         />
+
+        {tab === "saved" && (
+          <div className="space-y-3">
+            <p className="text-sm ink-secondary">
+              Reutiliza un sitio que ya tienes guardado: un lugar del viaje o tu alojamiento.
+            </p>
+
+            {saved.length > 6 && (
+              <TextInput
+                value={savedQuery}
+                onChange={(e) => setSavedQuery(e.target.value)}
+                placeholder="Filtrar…"
+                aria-label="Filtrar ubicaciones guardadas"
+              />
+            )}
+
+            {savedResults.length === 0 ? (
+              <p className="text-sm ink-muted">Ningún sitio coincide.</p>
+            ) : (
+              <ul className="app-scroll-y max-h-[min(20rem,45dvh)] divide-y divide-[var(--border-subtle)] rounded-xl border border-subtle">
+                {savedResults.map((entry) => (
+                  <li key={entry.key}>
+                    <button
+                      type="button"
+                      onClick={() => chooseSaved(entry)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:surface-2"
+                    >
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl surface-2 text-brand-600 dark:text-brand-300"
+                        aria-hidden
+                      >
+                        {entry.kind === "stay" ? (
+                          <StayIcon size={18} weight="fill" />
+                        ) : (
+                          <PlaceIcon size={18} weight="fill" />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium ink-primary">
+                          {entry.name}
+                        </span>
+                        {entry.detail && (
+                          <span className="block truncate text-xs ink-muted">{entry.detail}</span>
+                        )}
+                      </span>
+                      {entry.kind === "stay" && (
+                        <span className="shrink-0 rounded-full surface-2 px-2 py-0.5 text-[10px] font-medium ink-secondary">
+                          Alojamiento
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {tab === "current" && (
           <div className="space-y-3">

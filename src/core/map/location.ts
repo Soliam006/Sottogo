@@ -11,7 +11,8 @@
 import type { UUID } from "@/core/models";
 import type { LatLng } from "./geo";
 
-export type LocationSource = "current" | "search" | "map";
+/** De donde salio la ubicacion. `saved` = ya estaba guardada en el viaje. */
+export type LocationSource = "current" | "search" | "map" | "saved";
 
 export interface MemoryLocation extends LatLng {
   name: string | null;

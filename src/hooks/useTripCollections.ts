@@ -83,14 +83,17 @@ export function useMoments(tripId: string): AsyncState<Moment[]> {
   return state;
 }
 
-/** Vuelos, alojamientos y coches del viaje, en tiempo real. */
-export function useBookings(tripId: string): AsyncState<Booking[]> {
+/**
+ * Vuelos, alojamientos y coches del viaje, en tiempo real.
+ * `enabled` evita la peticion cuando quien mira no puede verlos (visitantes).
+ */
+export function useBookings(tripId: string, enabled = true): AsyncState<Booking[]> {
   const load = useCallback(
-    () => bookingsRepo.listByTrip(getSupabaseBrowserClient(), tripId),
-    [tripId],
+    async () => (enabled && tripId ? bookingsRepo.listByTrip(getSupabaseBrowserClient(), tripId) : []),
+    [tripId, enabled],
   );
-  const state = useAsyncData<Booking[]>(load, [tripId]);
-  useRealtimeTables(tripId, ["trip_bookings"], () => void state.refresh());
+  const state = useAsyncData<Booking[]>(load, [tripId, enabled]);
+  useRealtimeTables(enabled ? tripId : null, ["trip_bookings"], () => void state.refresh());
   return state;
 }
 

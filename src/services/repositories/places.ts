@@ -36,6 +36,16 @@ export const placesRepo = {
     return toPlace(asRow(response.data));
   },
 
+  /**
+   * Lugares del catalogo global por id. Resuelve las coordenadas de lo que solo
+   * guarda una referencia (por ejemplo el hotel de una reserva).
+   */
+  async listByIds(db: Db, ids: readonly UUID[]): Promise<Place[]> {
+    if (ids.length === 0) return [];
+    const result = await db.from("places").select("*").in("id", [...ids]);
+    return asRows(unwrap(result, "Cargar lugares")).map(toPlace);
+  },
+
   async listByTrip(db: Db, tripId: UUID): Promise<TripPlace[]> {
     const result = await db
       .from("trip_places")
