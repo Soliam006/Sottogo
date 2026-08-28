@@ -32,6 +32,7 @@ import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr/CheckCircle";
 import { ClipboardTextIcon } from "@phosphor-icons/react/dist/ssr/ClipboardText";
 import { CoffeeIcon } from "@phosphor-icons/react/dist/ssr/Coffee";
 import { CompassIcon } from "@phosphor-icons/react/dist/ssr/Compass";
+import { CopyIcon as PhCopy } from "@phosphor-icons/react/dist/ssr/Copy";
 import { CrosshairIcon } from "@phosphor-icons/react/dist/ssr/Crosshair";
 import { EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { DotsThreeIcon } from "@phosphor-icons/react/dist/ssr/DotsThree";
@@ -97,6 +98,7 @@ export const AttachIcon = PaperclipIcon;
 export const LocateIcon = CrosshairIcon;
 export const PinIcon = PushPinIcon;
 export const NotificationIcon = BellIcon;
+export const CopyIcon = PhCopy;
 export const ListIcon = ListBulletsIcon;
 // Roles del viaje.
 export const MemberIcon = UserIcon;

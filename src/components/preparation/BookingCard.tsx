@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/format";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DeleteIcon, ReferenceIcon } from "@/components/ui/icons";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { bookingIcon } from "@/components/ui/iconFor";
 
 /**
@@ -96,6 +97,7 @@ export function BookingCard({
               <ReferenceIcon size={14} className="shrink-0 ink-muted" aria-hidden />
               <span className="font-medium">Localizador</span>
               <span className="min-w-0 truncate font-mono">{booking.reference}</span>
+              <CopyButton value={booking.reference} label="Copiar localizador" size={13} />
             </p>
           )}
           {booking.notes && (
@@ -128,7 +130,16 @@ function Leg({
     <div className="min-w-0">
       <dt className="text-[11px] font-medium uppercase tracking-wide ink-muted">{label}</dt>
       <dd className="mt-0.5 min-w-0">
-        {place && <p className="truncate text-sm font-medium ink-primary">{place}</p>}
+        {place && (
+          /* La direccion es lo que se pega en el mapa o en el taxi: copiarla a
+             mano desde el movil es justo lo que se quiere evitar. */
+          <p className="flex items-center gap-1">
+            <span className="min-w-0 truncate text-sm font-medium ink-primary" title={place}>
+              {place}
+            </span>
+            <CopyButton value={place} label={`Copiar ${label.toLowerCase()}`} />
+          </p>
+        )}
         <p className="text-xs ink-secondary">
           {time || <span className="ink-muted">Sin fecha</span>}
           {terminal && <span className="ink-muted"> · Terminal {terminal}</span>}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { copyToClipboard } from "@/lib/clipboard";
 import { formatHandle } from "@/core/models";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
@@ -46,8 +47,13 @@ export function UserMenu() {
             <p className="truncate text-sm font-semibold ink-primary">{profile.name}</p>
             <button
               onClick={() => {
-                void navigator.clipboard?.writeText(handle);
-                toast("Identificador copiado");
+                // Se espera al resultado: antes decia "copiado" sin comprobarlo.
+                void copyToClipboard(handle).then((done) =>
+                  toast(
+                    done ? "Identificador copiado" : "No se ha podido copiar",
+                    done ? "success" : "error",
+                  ),
+                );
               }}
               className="mt-0.5 font-mono text-xs text-brand-600 hover:underline"
               title="Copiar identificador"
