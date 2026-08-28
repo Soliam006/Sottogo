@@ -136,10 +136,15 @@ create table if not exists public.trip_places (
   notes      text,
   rating     smallint check (rating between 1 and 5),
   visited_at date,
+  -- Portada elegida a mano entre las fotos del lugar. Si esta vacia se sigue
+  -- usando la primera foto asignada, que es el comportamiento de siempre.
+  cover_photo_id uuid references public.photos(id) on delete set null,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (trip_id, place_id)
 );
+alter table public.trip_places
+  add column if not exists cover_photo_id uuid references public.photos(id) on delete set null;
 create index if not exists trip_places_trip_idx on public.trip_places (trip_id);
 
 -- ---------------------------------------------------------------------------

@@ -10,6 +10,8 @@ export interface AddTripPlaceInput {
   notes?: string | null;
   rating?: number | null;
   visitedAt?: string | null;
+  /** Foto de portada. `null` vuelve a la automatica. */
+  coverPhotoId?: UUID | null;
 }
 
 export const placesRepo = {
@@ -98,6 +100,7 @@ export const placesRepo = {
     if (patch.notes !== undefined) payload.notes = patch.notes;
     if (patch.rating !== undefined) payload.rating = patch.rating;
     if (patch.visitedAt !== undefined) payload.visited_at = patch.visitedAt;
+    if (patch.coverPhotoId !== undefined) payload.cover_photo_id = patch.coverPhotoId;
 
     const result = await db
       .from("trip_places")

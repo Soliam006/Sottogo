@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { TripPlace, TripPlaceStatus } from "@/core/models";
+import type { Photo, TripPlace, TripPlaceStatus } from "@/core/models";
+import { coverUrlOf, photosOfPlace } from "@/core/places/cover";
 import { baseAmount } from "@/core/expenses/balance";
 import { formatDate, formatMoney, todayISO } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
@@ -12,7 +13,7 @@ import { useExpenses, usePhotos } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { ExpenseIcon, FavouriteIcon, MapIcon, PhotoIcon, PlaceIcon, VisitedIcon } from "@/components/ui/icons";
+import { CheckIcon, ExpenseIcon, FavouriteIcon, ImageIcon, MapIcon, PhotoIcon, PlaceIcon, VisitedIcon } from "@/components/ui/icons";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, LoadingState } from "@/components/ui/States";
 import { ProgressBar, Rating, SegmentedControl } from "@/components/ui/Misc";
@@ -56,8 +57,7 @@ export function PlacesView() {
 
   const filtered = tripPlaces.filter((tp) => filter === "all" || tp.status === filter);
 
-  const coverFor = (tripPlace: TripPlace) =>
-    (photos ?? []).find((p) => p.tripPlaceId === tripPlace.id)?.thumbUrl ?? tripPlace.place.image;
+  const coverFor = (tripPlace: TripPlace) => coverUrlOf(tripPlace, photos ?? []);
 
   async function toggleStatus(tripPlace: TripPlace) {
     const next: TripPlaceStatus = tripPlace.status === "visited" ? "wishlist" : "visited";
@@ -187,6 +187,7 @@ export function PlacesView() {
       {editing && (
         <EditPlaceModal
           tripPlace={editing}
+          photos={photosOfPlace(editing, photos ?? [])}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
@@ -201,16 +202,21 @@ export function PlacesView() {
 
 function EditPlaceModal({
   tripPlace,
+  photos,
   onClose,
   onSaved,
 }: {
   tripPlace: TripPlace;
+  /** Fotos ya asignadas a este lugar: las candidatas a portada. */
+  photos: Photo[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { toast } = useToast();
   const [notes, setNotes] = useState(tripPlace.notes ?? "");
   const [rating, setRating] = useState<number | null>(tripPlace.rating);
+  // `null` = automatica (la primera foto del lugar).
+  const [coverPhotoId, setCoverPhotoId] = useState<string | null>(tripPlace.coverPhotoId);
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -219,6 +225,7 @@ function EditPlaceModal({
       await placesRepo.update(getSupabaseBrowserClient(), tripPlace.id, {
         notes: notes.trim() || null,
         rating,
+        coverPhotoId,
       });
       toast("Lugar actualizado");
       onSaved();
@@ -247,6 +254,72 @@ function EditPlaceModal({
       }
     >
       <div className="space-y-5">
+        <div className="space-y-1.5">
+          <span className="block text-sm font-medium ink-secondary">Portada</span>
+          {photos.length === 0 ? (
+            <p className="text-sm ink-muted">
+              Sube fotos a la galería y asígnalas a este lugar para poder elegir su portada.
+            </p>
+          ) : (
+            <>
+              <ul className="app-scroll-x no-scrollbar flex gap-2 pb-1">
+                <li>
+                  {/* Sin elegir nada, la portada la pone la primera foto. */}
+                  <button
+                    type="button"
+                    onClick={() => setCoverPhotoId(null)}
+                    aria-pressed={coverPhotoId === null}
+                    className={
+                      "flex h-16 w-16 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg border text-[10px] transition-colors " +
+                      (coverPhotoId === null
+                        ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-900/40 dark:text-brand-200"
+                        : "border-subtle ink-muted hover:surface-2")
+                    }
+                  >
+                    <ImageIcon size={18} weight="duotone" aria-hidden />
+                    Auto
+                  </button>
+                </li>
+                {photos.map((photo) => {
+                  const active = coverPhotoId === photo.id;
+                  return (
+                    <li key={photo.id}>
+                      <button
+                        type="button"
+                        onClick={() => setCoverPhotoId(photo.id)}
+                        aria-pressed={active}
+                        aria-label={photo.description || "Usar como portada"}
+                        className={
+                          "relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-colors " +
+                          (active ? "border-brand-500" : "border-transparent hover:border-subtle")
+                        }
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.thumbUrl ?? photo.url}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                        {active && (
+                          <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-white">
+                            <CheckIcon size={11} weight="bold" aria-hidden />
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-xs ink-muted">
+                {coverPhotoId === null
+                  ? "Automática: se usa la primera foto del lugar."
+                  : "Portada fijada."}
+              </p>
+            </>
+          )}
+        </div>
+
         <div className="space-y-1.5">
           <span className="block text-sm font-medium ink-secondary">Valoración</span>
           <Rating value={rating} onChange={setRating} />

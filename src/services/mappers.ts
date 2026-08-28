@@ -130,6 +130,7 @@ export function toTripPlace(row: Row): TripPlace {
     notes: strOrNull(row.notes),
     rating: numOrNull(row.rating),
     visitedAt: strOrNull(row.visited_at),
+    coverPhotoId: strOrNull(row.cover_photo_id),
     createdBy: strOrNull(row.created_by),
     createdAt: str(row.created_at),
     place: toPlace((row.place as Row) ?? {}),

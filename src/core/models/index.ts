@@ -109,6 +109,8 @@ export interface TripPlace {
   notes: string | null;
   rating: number | null;
   visitedAt: ISODate | null;
+  /** Foto elegida como portada. Sin ella se usa la primera del lugar. */
+  coverPhotoId: UUID | null;
   createdBy: UUID | null;
   createdAt: ISODateTime;
   place: Place;
