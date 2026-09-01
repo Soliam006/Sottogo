@@ -1,7 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import type { ChecklistItem } from "@/core/models";
+import { useMemo, useState } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import type { ChecklistItem, ChecklistList, ChecklistListKind } from "@/core/models";
+import {
+  itemsOfList,
+  moveItemToList,
+  nextListPosition,
+  nextPosition,
+  reorderLists,
+  reorderWithinList,
+  sortLists,
+} from "@/core/checklist";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { checklistRepo } from "@/services/repositories";
@@ -10,158 +34,275 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
-import { CloseIcon } from "@/components/ui/icons";
-import { Card } from "@/components/ui/Card";
-import { TextInput } from "@/components/ui/Field";
-import { ProgressBar } from "@/components/ui/Misc";
-import { ErrorState, LoadingState } from "@/components/ui/States";
-
-const SUGGESTIONS = [
-  "Pasaporte", "Vuelos", "Alojamiento", "Seguro de viaje", "eSIM",
-  "Adaptador de enchufe", "Maleta", "Efectivo en moneda local",
-];
+import { AddIcon, ChecklistIcon } from "@/components/ui/icons";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { ListCard } from "./ListCard";
+import { ListDetail } from "./ListDetail";
+import { ListFormModal } from "./ListFormModal";
 
 /**
- * Apartado "Otros" de Preparacion: la checklist de siempre.
+ * Apartado "Otros" de Preparacion.
  *
- * Antes era la seccion entera (`ChecklistView`); ahora es una pestana dentro de
- * `PreparationView`. El almacenamiento no cambia: los mismos `checklist_items`,
- * el mismo repositorio y los mismos elementos que ya tenias.
+ * Antes era UNA checklist plana. Ahora es un tablero de listas: cada Card es
+ * una lista y dentro estan sus elementos. Los elementos que ya existian no se
+ * pierden: la migracion del esquema los adopta en una lista inicial.
  *
- * El estado llega por props y no de `useChecklist`: `PreparationView` ya
- * necesita la lista para el contador de la pestana, y suscribirse dos veces a
- * la misma tabla duplicaba la peticion y la suscripcion realtime.
+ * El estado llega por props porque `PreparationView` ya lo necesita para el
+ * contador de la pestana; suscribirse dos veces duplicaria peticion y realtime.
  */
-export function ChecklistPanel({ state }: { state: AsyncState<ChecklistItem[]> }) {
-  const { trip } = useTrip();
+export function ChecklistPanel({
+  items: itemsState,
+  lists: listsState,
+}: {
+  items: AsyncState<ChecklistItem[]>;
+  lists: AsyncState<ChecklistList[]>;
+}) {
+  const { trip, canEdit } = useTrip();
   const { session } = useSession();
   const { toast } = useToast();
+  const [confirm, confirmDialog] = useConfirm();
 
-  const { data, loading, error, refresh } = state;
-  const [title, setTitle] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ list: ChecklistList | null } | null>(null);
 
-  const items = data ?? [];
-  const done = items.filter((i) => i.completed).length;
+  const lists = useMemo(() => sortLists(listsState.data ?? []), [listsState.data]);
+  const items = useMemo(() => itemsState.data ?? [], [itemsState.data]);
+  const open = lists.find((list) => list.id === openId) ?? null;
 
-  async function add(text: string) {
-    if (text.trim().length < 2 || !trip || !session?.user) return;
-    setSaving(true);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const db = () => getSupabaseBrowserClient();
+  const fail = (err: unknown) => {
+    toast(errorMessage(err), "error");
+    void listsState.refresh();
+    void itemsState.refresh();
+  };
+
+  // --- listas ---------------------------------------------------------------
+  async function saveList(values: { title: string; icon: string; kind: ChecklistListKind }) {
+    if (!trip || !session?.user) return;
+    const target = editing?.list;
+
+    if (target) {
+      await checklistRepo.updateList(db(), target.id, values);
+    } else {
+      const created = await checklistRepo.createList(db(), trip.id, session.user.id, {
+        ...values,
+        position: nextListPosition(lists),
+      });
+      setOpenId(created.id);
+    }
+    await listsState.refresh();
+  }
+
+  async function removeList(list: ChecklistList) {
+    const count = itemsOfList(items, list.id).length;
+    const ok = await confirm({
+      title: `Eliminar “${list.title}”`,
+      body: count
+        ? `Se eliminarán también sus ${count} elemento${count === 1 ? "" : "s"}. Esta acción no se puede deshacer.`
+        : "Esta acción no se puede deshacer.",
+    });
+    if (!ok) return;
+
+    try {
+      await checklistRepo.removeList(db(), list.id);
+      if (openId === list.id) setOpenId(null);
+      toast("Lista eliminada", "info");
+      await Promise.all([listsState.refresh(), itemsState.refresh()]);
+    } catch (err) {
+      fail(err);
+    }
+  }
+
+  async function handleListDrag(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const moves = reorderLists(lists, String(active.id), String(over.id));
+    if (!moves.length) return;
+
+    // Optimista: el Card se queda donde lo has soltado y no da un salto
+    // mientras la base de datos confirma.
+    const byId = new Map(moves.map((move) => [move.id, move.position]));
+    listsState.setData((prev) =>
+      sortLists((prev ?? []).map((l) => (byId.has(l.id) ? { ...l, position: byId.get(l.id)! } : l))),
+    );
+
+    try {
+      await checklistRepo.reorderLists(db(), moves);
+    } catch (err) {
+      fail(err);
+    }
+  }
+
+  // --- elementos ------------------------------------------------------------
+  async function addItem(listId: string, title: string) {
+    if (!trip || !session?.user) return;
     try {
       await checklistRepo.create(
-        getSupabaseBrowserClient(),
+        db(),
         trip.id,
         session.user.id,
-        text,
-        items.length,
+        listId,
+        title,
+        nextPosition(itemsOfList(items, listId)),
       );
-      setTitle("");
-      await refresh();
+      await itemsState.refresh();
     } catch (err) {
-      toast(errorMessage(err), "error");
-    } finally {
-      setSaving(false);
+      fail(err);
     }
   }
 
-  async function toggle(item: ChecklistItem) {
+  async function toggleItem(item: ChecklistItem) {
+    itemsState.setData((prev) =>
+      (prev ?? []).map((i) => (i.id === item.id ? { ...i, completed: !i.completed } : i)),
+    );
     try {
-      await checklistRepo.setCompleted(getSupabaseBrowserClient(), item.id, !item.completed);
-      await refresh();
+      await checklistRepo.setCompleted(db(), item.id, !item.completed);
     } catch (err) {
-      toast(errorMessage(err), "error");
+      fail(err);
     }
   }
 
-  async function remove(item: ChecklistItem) {
+  async function renameItem(item: ChecklistItem, title: string) {
+    itemsState.setData((prev) => (prev ?? []).map((i) => (i.id === item.id ? { ...i, title } : i)));
     try {
-      await checklistRepo.remove(getSupabaseBrowserClient(), item.id);
-      await refresh();
+      await checklistRepo.rename(db(), item.id, title);
     } catch (err) {
-      toast(errorMessage(err), "error");
+      fail(err);
     }
   }
 
-  if (loading && !data) return <LoadingState label="Cargando checklist…" />;
+  async function removeItem(item: ChecklistItem) {
+    itemsState.setData((prev) => (prev ?? []).filter((i) => i.id !== item.id));
+    try {
+      await checklistRepo.remove(db(), item.id);
+    } catch (err) {
+      fail(err);
+    }
+  }
 
-  const missing = SUGGESTIONS.filter(
-    (s) => !items.some((i) => i.title.toLowerCase() === s.toLowerCase()),
-  );
+  async function applyMoves(moves: ReturnType<typeof reorderWithinList>) {
+    if (!moves.length) return;
+    const byId = new Map(moves.map((move) => [move.id, move]));
+    itemsState.setData((prev) =>
+      (prev ?? []).map((item) => {
+        const move = byId.get(item.id);
+        return move ? { ...item, listId: move.listId, position: move.position } : item;
+      }),
+    );
+    try {
+      await checklistRepo.applyMoves(db(), moves);
+    } catch (err) {
+      fail(err);
+    }
+  }
+
+  // --- render ---------------------------------------------------------------
+  if ((listsState.loading && !listsState.data) || (itemsState.loading && !itemsState.data)) {
+    return <LoadingState label="Cargando listas…" />;
+  }
+
+  const error = listsState.error ?? itemsState.error;
+
+  if (open) {
+    return (
+      <>
+        <ListDetail
+          list={open}
+          lists={lists}
+          items={itemsOfList(items, open.id)}
+          canEdit={canEdit}
+          onBack={() => setOpenId(null)}
+          onToggle={(item) => void toggleItem(item)}
+          onAdd={(title) => addItem(open.id, title)}
+          onRename={(item, title) => renameItem(item, title)}
+          onRemoveItem={(item) => void removeItem(item)}
+          onReorder={(fromId, toId) =>
+            void applyMoves(reorderWithinList(items, open.id, fromId, toId))
+          }
+          onMoveToList={(itemId, listId) => void applyMoves(moveItemToList(items, itemId, listId))}
+          onEditList={() => setEditing({ list: open })}
+        />
+        {editing && (
+          <ListFormModal
+            open
+            list={editing.list}
+            onClose={() => setEditing(null)}
+            onSubmit={saveList}
+          />
+        )}
+        {confirmDialog}
+      </>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {error && <ErrorState message={error} onRetry={() => void refresh()} />}
+      {error && <ErrorState message={error} onRetry={() => void listsState.refresh()} />}
 
-      <Card className="p-5">
-        <ProgressBar value={done} total={items.length} label="Completado" />
+      {lists.length === 0 ? (
+        <EmptyState
+          icon={ChecklistIcon}
+          title="Todavía no hay listas"
+          description="Crea listas para lo que tengas que preparar, los sitios que quieras ver o lo que se te vaya ocurriendo."
+          action={
+            canEdit ? (
+              <Button onClick={() => setEditing({ list: null })}>
+                <AddIcon size={16} weight="bold" aria-hidden />
+                Nueva lista
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(event) => void handleListDrag(event)}
+          >
+            <SortableContext items={lists.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {lists.map((list) => (
+                  <li key={list.id}>
+                    <ListCard
+                      list={list}
+                      items={itemsOfList(items, list.id)}
+                      canEdit={canEdit}
+                      onOpen={() => setOpenId(list.id)}
+                      onEdit={() => setEditing({ list })}
+                      onDelete={() => void removeList(list)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void add(title);
-          }}
-          className="mt-5 flex gap-2"
-        >
-          <TextInput
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Añadir elemento…"
-            maxLength={80}
-          />
-          <Button type="submit" loading={saving} disabled={title.trim().length < 2}>
-            Añadir
-          </Button>
-        </form>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setEditing({ list: null })}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-subtle px-4 py-3.5 text-sm font-medium ink-secondary transition-colors hover:surface-2 hover:ink-primary"
+            >
+              <AddIcon size={16} weight="bold" aria-hidden />
+              Nueva lista
+            </button>
+          )}
+        </>
+      )}
 
-        {items.length > 0 && (
-          <ul className="mt-5 divide-y divide-[var(--border-subtle)]">
-            {items.map((item) => (
-              <li key={item.id} className="group flex items-center gap-3 py-2.5">
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={() => void toggle(item)}
-                  className="h-5 w-5 shrink-0 accent-[var(--color-brand-600)]"
-                  aria-label={item.title}
-                />
-                <span
-                  className={
-                    "flex-1 text-sm " +
-                    (item.completed ? "line-through ink-muted" : "ink-primary")
-                  }
-                >
-                  {item.title}
-                </span>
-                <button
-                  onClick={() => void remove(item)}
-                  aria-label={`Eliminar ${item.title}`}
-                  className="rounded-lg p-1 ink-muted transition-opacity hover:text-rose-600 focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                >
-                  <CloseIcon size={14} weight="bold" aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {missing.length > 0 && (
-          <div className="mt-6">
-            <p className="text-xs font-medium uppercase tracking-wide ink-muted">Sugerencias</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {missing.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => void add(suggestion)}
-                  className="rounded-full border border-subtle px-3 py-1.5 text-sm ink-secondary transition-colors hover:surface-2"
-                >
-                  + {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
-
+      {editing && (
+        <ListFormModal open list={editing.list} onClose={() => setEditing(null)} onSubmit={saveList} />
+      )}
+      {confirmDialog}
     </div>
   );
 }

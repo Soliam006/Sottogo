@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import type {
   Booking,
   ChecklistItem,
+  ChecklistList,
   Expense,
   ItineraryItem,
   Moment,
@@ -118,5 +119,16 @@ export function useChecklist(tripId: string): AsyncState<ChecklistItem[]> {
   );
   const state = useAsyncData<ChecklistItem[]>(load, [tripId]);
   useRealtimeTables(tripId, ["checklist_items"], () => void state.refresh());
+  return state;
+}
+
+/** Las listas del apartado "Otros" (los Cards), en tiempo real. */
+export function useChecklistLists(tripId: string): AsyncState<ChecklistList[]> {
+  const load = useCallback(
+    () => checklistRepo.listsByTrip(getSupabaseBrowserClient(), tripId),
+    [tripId],
+  );
+  const state = useAsyncData<ChecklistList[]>(load, [tripId]);
+  useRealtimeTables(tripId, ["checklist_lists"], () => void state.refresh());
   return state;
 }

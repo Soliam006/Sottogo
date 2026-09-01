@@ -3,11 +3,12 @@
 import { useState } from "react";
 import type { Booking, BookingKind } from "@/core/models";
 import { BOOKING_KINDS, bookingConfig, bookingsOfKind } from "@/core/bookings";
+import { pendingCount } from "@/core/checklist";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { bookingsRepo } from "@/services/repositories";
 import { useTrip } from "@/components/providers/TripProvider";
-import { useBookings, useChecklist } from "@/hooks/useTripCollections";
+import { useBookings, useChecklist, useChecklistLists } from "@/hooks/useTripCollections";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -38,8 +39,9 @@ export function PreparationView() {
   const [confirm, confirmDialog] = useConfirm();
 
   const { data, loading, error, refresh } = useBookings(tripId);
-  // Una sola suscripcion a la checklist: alimenta el contador y el panel.
+  // Una sola suscripcion a cada tabla: alimentan el contador y el panel.
   const checklistState = useChecklist(tripId);
+  const checklistLists = useChecklistLists(tripId);
 
   const [tab, setTab] = useState<TabKey>("flight");
   const [editing, setEditing] = useState<{ kind: BookingKind; booking: Booking | null } | null>(
@@ -47,7 +49,9 @@ export function PreparationView() {
   );
 
   const bookings = data ?? [];
-  const pendingChecklist = (checklistState.data ?? []).filter((i) => !i.completed).length;
+  // Solo cuentan las listas que se completan: una coleccion de ideas no deja
+  // "pendientes".
+  const pendingChecklist = pendingCount(checklistLists.data ?? [], checklistState.data ?? []);
 
   const tabs: TabOption<TabKey>[] = [
     ...BOOKING_KINDS.map((config) => ({
@@ -86,7 +90,7 @@ export function PreparationView() {
       <Tabs value={tab} onChange={setTab} options={tabs} />
 
       {tab === "other" ? (
-        <ChecklistPanel state={checklistState} />
+        <ChecklistPanel items={checklistState} lists={checklistLists} />
       ) : (
         <BookingsPanel
           kind={tab}

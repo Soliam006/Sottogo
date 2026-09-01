@@ -260,9 +260,31 @@ export interface Booking {
   createdAt: ISODateTime;
 }
 
+/**
+ * Como se lee una lista de preparacion.
+ *   checklist  -> sus elementos se completan; la lista muestra progreso.
+ *   collection -> solo se guardan (lugares, restaurantes, ideas).
+ */
+export type ChecklistListKind = "checklist" | "collection";
+
+/** Una lista del apartado "Otros" de Preparacion. */
+export interface ChecklistList {
+  id: UUID;
+  tripId: UUID;
+  title: string;
+  /** Clave de icono, no un emoji. La traduce la interfaz. */
+  icon: string;
+  kind: ChecklistListKind;
+  position: number;
+  createdBy: UUID | null;
+  createdAt: ISODateTime;
+}
+
 export interface ChecklistItem {
   id: UUID;
   tripId: UUID;
+  /** Lista a la que pertenece. Nulo solo en filas anteriores a la migracion. */
+  listId: UUID | null;
   title: string;
   completed: boolean;
   position: number;

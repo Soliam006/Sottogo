@@ -8,6 +8,7 @@
 import type {
   Booking,
   ChecklistItem,
+  ChecklistList,
   MomentComment,
   Expense,
   ItineraryItem,
@@ -256,10 +257,25 @@ export function toBooking(row: Row): Booking {
   };
 }
 
+export function toChecklistList(row: Row): ChecklistList {
+  const kind = row.kind === "collection" ? "collection" : "checklist";
+  return {
+    id: str(row.id),
+    tripId: str(row.trip_id),
+    title: str(row.title),
+    icon: row.icon ? str(row.icon) : "checklist",
+    kind,
+    position: num(row.position),
+    createdBy: strOrNull(row.created_by),
+    createdAt: str(row.created_at),
+  };
+}
+
 export function toChecklistItem(row: Row): ChecklistItem {
   return {
     id: str(row.id),
     tripId: str(row.trip_id),
+    listId: strOrNull(row.list_id),
     title: str(row.title),
     completed: bool(row.completed),
     position: num(row.position),

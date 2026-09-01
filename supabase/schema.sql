@@ -381,6 +381,33 @@ create table if not exists public.journal_entries (
   created_at timestamptz not null default now()
 );
 
+-- ---------------------------------------------------------------------------
+-- LISTAS DE PREPARACION (pestana "Otros")
+--
+-- Antes "Otros" era UNA checklist plana por viaje. Ahora es un tablero de
+-- listas: "Antes del viaje", "Lugares para ver", "Restaurantes"... Cada lista
+-- guarda sus elementos y decide como se leen:
+--
+--   checklist  -> se completan. Muestra progreso.
+--   collection -> solo se guardan (lugares, ideas). Sin progreso.
+--
+-- `kind` es text con CHECK y no un enum a proposito: anadir un tipo nuevo a un
+-- enum obliga a ejecutarlo en su propia transaccion, y este esquema se pega
+-- entero en el editor SQL.
+-- ---------------------------------------------------------------------------
+create table if not exists public.checklist_lists (
+  id         uuid primary key default gen_random_uuid(),
+  trip_id    uuid not null references public.trips(id) on delete cascade,
+  title      text not null,
+  -- Clave de icono; la traduce la interfaz. Nunca un emoji.
+  icon       text not null default 'checklist',
+  kind       text not null default 'checklist' check (kind in ('checklist', 'collection')),
+  position   int not null default 0,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists checklist_lists_trip_idx on public.checklist_lists (trip_id, position);
+
 create table if not exists public.checklist_items (
   id         uuid primary key default gen_random_uuid(),
   trip_id    uuid not null references public.trips(id) on delete cascade,
@@ -391,6 +418,54 @@ create table if not exists public.checklist_items (
   created_at timestamptz not null default now()
 );
 create index if not exists checklist_trip_idx on public.checklist_items (trip_id, position);
+
+-- Aditivo para bases ya desplegadas. Se anade NULLABLE para no romper las filas
+-- que ya existen; el bloque de abajo las adopta y solo entonces se exige.
+alter table public.checklist_items
+  add column if not exists list_id uuid references public.checklist_lists(id) on delete cascade;
+create index if not exists checklist_items_list_idx on public.checklist_items (list_id, position);
+
+-- ---------------------------------------------------------------------------
+-- MIGRACION NO DESTRUCTIVA de la checklist plana al tablero de listas.
+--
+-- Cada viaje que tenga elementos sueltos recibe una lista que los adopta. No se
+-- borra ni se reescribe ningun elemento: solo se les asigna `list_id`. Es
+-- idempotente: a la segunda pasada no queda nada suelto y no hace nada.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  r      record;
+  v_list uuid;
+begin
+  for r in select distinct trip_id from public.checklist_items where list_id is null
+  loop
+    -- Si el viaje ya tiene alguna lista, los sueltos van a la primera.
+    select id into v_list
+      from public.checklist_lists
+     where trip_id = r.trip_id
+     order by position, created_at
+     limit 1;
+
+    if v_list is null then
+      insert into public.checklist_lists (trip_id, title, icon, kind, position)
+      values (r.trip_id, 'Antes del viaje', 'trip', 'checklist', 0)
+      returning id into v_list;
+    end if;
+
+    update public.checklist_items
+       set list_id = v_list
+     where trip_id = r.trip_id and list_id is null;
+  end loop;
+end $$;
+
+-- Ya sin huerfanos, la columna pasa a obligatoria. Se comprueba antes en vez de
+-- forzarla: si algo quedara suelto es preferible dejarlo visible a fallar.
+do $$
+begin
+  if not exists (select 1 from public.checklist_items where list_id is null) then
+    alter table public.checklist_items alter column list_id set not null;
+  end if;
+end $$;
 
 -- ===========================================================================
 --  FUNCIONES
@@ -672,6 +747,7 @@ alter table public.moments          enable row level security;
 alter table public.moment_photos    enable row level security;
 alter table public.journal_entries  enable row level security;
 alter table public.checklist_items  enable row level security;
+alter table public.checklist_lists  enable row level security;
 
 -- --- PROFILES -------------------------------------------------------------
 drop policy if exists profiles_select_self on public.profiles;
@@ -771,9 +847,14 @@ begin
   -- solo lo edita quien puede editar.
   foreach t in array array['trip_places','photos','itinerary_items','moments']
   loop
+    -- Se borran LOS CUATRO nombres posibles, no solo los que este bucle crea.
+    -- Sin `%I_editor_all` la segunda ejecucion del esquema fallaba con
+    -- "policy ... already exists", y este fichero promete ser idempotente.
+    -- Borrarlos todos permite ademas mover una tabla de un bucle al otro.
     execute format('drop policy if exists %I_member_all on public.%I', t, t);
     execute format('drop policy if exists %I_member_read on public.%I', t, t);
     execute format('drop policy if exists %I_editor_write on public.%I', t, t);
+    execute format('drop policy if exists %I_editor_all on public.%I', t, t);
 
     execute format($p$
       create policy %I_member_read on public.%I
@@ -793,11 +874,16 @@ begin
   -- SECCIONES PRIVADAS: gastos, preparacion y diario. Un visitante no las lee
   -- ni siquiera con una consulta a mano: la base de datos no le devuelve nada.
   foreach t in array array['expenses','journal_entries','checklist_items',
-                           'trip_bookings']
+                           'checklist_lists','trip_bookings']
   loop
+    -- Se borran LOS CUATRO nombres posibles, no solo los que este bucle crea.
+    -- Sin `%I_editor_all` la segunda ejecucion del esquema fallaba con
+    -- "policy ... already exists", y este fichero promete ser idempotente.
+    -- Borrarlos todos permite ademas mover una tabla de un bucle al otro.
     execute format('drop policy if exists %I_member_all on public.%I', t, t);
     execute format('drop policy if exists %I_member_read on public.%I', t, t);
     execute format('drop policy if exists %I_editor_write on public.%I', t, t);
+    execute format('drop policy if exists %I_editor_all on public.%I', t, t);
 
     execute format($p$
       create policy %I_editor_all on public.%I
@@ -900,7 +986,8 @@ declare
 begin
   foreach t in array array['trips','trip_members','trip_invitations','trip_places',
                            'expenses','photos','itinerary_items','moments',
-                           'checklist_items','journal_entries','trip_bookings',
+                           'checklist_items','checklist_lists',
+                           'journal_entries','trip_bookings',
                            'moment_comments']
   loop
     begin
