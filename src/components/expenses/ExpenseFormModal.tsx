@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Expense, Photo, TripPlace } from "@/core/models";
-import { CURRENCIES } from "@/core/currency";
+import { CURRENCIES, currencyDecimals, roundForCurrency } from "@/core/currency";
 import { EXPENSE_CATEGORIES } from "@/core/expenses/categories";
 import type { ExpenseCategory } from "@/core/models";
 import { todayISO } from "@/lib/format";
@@ -107,8 +107,11 @@ export function ExpenseFormModal({
   async function submit() {
     setError(null);
 
-    const value = Number(amount.replace(",", "."));
-    if (!Number.isFinite(value) || value <= 0) return setError("Introduce un importe válido.");
+    const typed = Number(amount.replace(",", "."));
+    if (!Number.isFinite(typed) || typed <= 0) return setError("Introduce un importe válido.");
+    // El importe se guarda en la unidad minima de SU divisa: 1.500,75 ₲ no
+    // existe, son 1.501 ₲.
+    const value = roundForCurrency(typed, currency);
     if (description.trim().length < 2) return setError("Añade una descripción.");
     if (!trip || !session?.user) return;
 
@@ -213,7 +216,8 @@ export function ExpenseFormModal({
                   id={id}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  inputMode="decimal"
+                  // Sin fraccion (guarani, yen) el teclado movil no ofrece coma.
+                  inputMode={currencyDecimals(currency) === 0 ? "numeric" : "decimal"}
                   placeholder="2400"
                   autoFocus
                 />

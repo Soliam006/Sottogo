@@ -1,19 +1,23 @@
-import { currencyMeta } from "@/core/currency";
+import { currencyDecimals, currencyMeta } from "@/core/currency";
 
 const LOCALE = "es-ES";
 
+/**
+ * Importe con su divisa.
+ *
+ * No se fuerza el numero de decimales: `Intl` ya sabe cuantos lleva cada
+ * divisa. Forzarlo a dos convertia "1.000 ₲" en "1.000,00 ₲", que en Paraguay
+ * no significa nada.
+ */
 export function formatMoney(amount: number, currency: string, options: { compact?: boolean } = {}): string {
-  const zeroDecimal = ["JPY", "KRW", "VND", "CLP", "ISK"].includes(currency);
   try {
     return new Intl.NumberFormat(LOCALE, {
       style: "currency",
       currency,
-      minimumFractionDigits: zeroDecimal ? 0 : 2,
-      maximumFractionDigits: zeroDecimal ? 0 : 2,
       notation: options.compact ? "compact" : "standard",
     }).format(amount);
   } catch {
-    return `${amount.toFixed(zeroDecimal ? 0 : 2)} ${currencyMeta(currency).symbol}`;
+    return `${amount.toFixed(currencyDecimals(currency))} ${currencyMeta(currency).symbol}`;
   }
 }
 

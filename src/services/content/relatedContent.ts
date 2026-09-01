@@ -96,8 +96,11 @@ export async function createRelatedContent(
 
   let expense: Expense | null = null;
   if (wants("expense")) {
-    const value = parseAmount(draft.expense.amount);
-    if (value === null) throw new Error("Importe del gasto relacionado no válido.");
+    const typed = parseAmount(draft.expense.amount);
+    if (typed === null) throw new Error("Importe del gasto relacionado no válido.");
+    // Mismo criterio que el alta normal: el importe se ajusta a la unidad
+    // minima de su divisa antes de guardarse.
+    const value = roundForCurrency(typed, draft.expense.currency);
 
     const amounts = await convertToBase(value, draft.expense.currency, ctx.baseCurrency);
     expense = await expensesRepo.create(db, ctx.tripId, ctx.userId, {

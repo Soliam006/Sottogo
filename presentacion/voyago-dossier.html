@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Voyago · Dossier de producto</title>
+<style>
+/* ===========================================================================
+   Voyago — dossier de presentación
+   Paleta y tipografía tomadas de src/app/globals.css
+   Capturas: interfaz real de la aplicación, datos ficticios (Japón 2026)
+   =========================================================================== */
+:root{
+  --ink:#16150f; --ink-2:#55534b; --ink-3:#85837a;
+  --paper:#f7f6f3; --card:#ffffff; --line:#e4e1da; --surface2:#f1efea;
+  --brand:#4f46e5; --brand-500:#6366f1; --brand-50:#eef2ff; --brand-900:#312e81;
+  --night:#0b0a1f; --sun:#f97316; --sun-300:#fdba74;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{
+  font-family:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink); background:#8a8a8a;
+  -webkit-font-smoothing:antialiased;
+}
+@page{ size:A4 portrait; margin:0 }
+
+.page{
+  position:relative; width:210mm; height:297mm; overflow:hidden;
+  background:var(--paper); page-break-after:always; break-after:page;
+}
+.page:last-child{page-break-after:auto;break-after:auto}
+.pad{position:absolute; inset:0; padding:19mm 16mm 20mm}
+.dark{background:var(--night); color:#fff}
+
+/* --- tipografía --- */
+.eyebrow{font-size:8.4pt; letter-spacing:.26em; text-transform:uppercase; font-weight:700; color:var(--brand)}
+.dark .eyebrow{color:var(--sun-300)}
+.display{font-size:64pt; line-height:.94; font-weight:800; letter-spacing:-.035em}
+.h1{font-size:37pt; line-height:1.05; font-weight:800; letter-spacing:-.028em}
+.h2{font-size:19pt; line-height:1.2; font-weight:700; letter-spacing:-.018em}
+.h3{font-size:12.5pt; font-weight:700; letter-spacing:-.008em; line-height:1.25}
+.lead{font-size:14pt; line-height:1.5; color:var(--ink-2)}
+.body{font-size:11pt; line-height:1.55; color:var(--ink-2)}
+.cap{font-size:9.5pt; line-height:1.45; color:var(--ink-3)}
+.dark .h1,.dark .display,.dark .h3{color:#fff}
+.dark .body,.dark .cap,.dark .lead{color:rgba(255,255,255,.74)}
+.hl{color:var(--brand)}
+.dark .hl{color:var(--sun-300)}
+strong{color:var(--ink);font-weight:700}
+
+/* --- marca --- */
+.brand{display:flex; align-items:center; gap:3mm}
+.brand svg{width:8.5mm;height:8.5mm;fill:var(--brand)}
+.dark .brand svg{fill:#fff}
+.brand .wm{font-size:15pt; font-weight:800; letter-spacing:.15em}
+
+/* --- teléfono --- */
+.phone{
+  border-radius:5mm; overflow:hidden; background:#fff;
+  border:.3mm solid rgba(22,21,15,.08);
+  box-shadow:0 8mm 18mm rgba(20,18,12,.17), 0 1mm 3mm rgba(20,18,12,.07);
+}
+.phone img{display:block; width:100%; height:auto}
+.dark .phone{border-color:rgba(255,255,255,.12); box-shadow:0 9mm 22mm rgba(0,0,0,.55)}
+.crop{overflow:hidden; border-radius:4mm; background:#fff}
+.crop img{display:block; width:100%}
+
+/* --- retículas --- */
+.row{display:flex}
+.col{display:flex; flex-direction:column}
+.grow{flex:1; min-width:0}
+.center{align-items:center; justify-content:center}
+.mt2{margin-top:2mm}.mt3{margin-top:3mm}.mt4{margin-top:4mm}.mt6{margin-top:6mm}
+.mt8{margin-top:8mm}.mt10{margin-top:10mm}.mt12{margin-top:12mm}.mt16{margin-top:16mm}
+
+/* --- piezas --- */
+.chip{
+  display:inline-flex; align-items:center; align-self:flex-start;
+  padding:1.8mm 4mm; border-radius:99px;
+  background:var(--brand-50); color:var(--brand); font-size:9pt; font-weight:700;
+}
+.dark .chip{background:rgba(255,255,255,.11); color:#fff}
+.rule{height:.3mm; background:var(--line); border:0}
+.dark .rule{background:rgba(255,255,255,.16)}
+.num{font-size:10pt; font-weight:800; color:var(--brand); letter-spacing:.1em}
+.folio{
+  position:absolute; left:16mm; right:16mm; bottom:10mm;
+  display:flex; justify-content:space-between;
+  font-size:8pt; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3);
+}
+.dark .folio{color:rgba(255,255,255,.42)}
+.tile{border-radius:3mm; overflow:hidden; background:var(--surface2)}
+.tile img{display:block;width:100%;height:100%;object-fit:cover}
+.feat{border-left:.8mm solid var(--brand); padding-left:5mm}
+.dark .feat{border-color:var(--sun)}
+.box{border-radius:4mm; border:.3mm solid var(--line); padding:5mm 6mm}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════ 1 · PORTADA ══════════════════════════ -->
+<section class="page dark">
+  <div style="position:absolute;inset:0;background:
+      radial-gradient(90% 70% at 12% 0%, #4f46e5 0%, transparent 58%),
+      radial-gradient(80% 70% at 92% 100%, #f97316 0%, transparent 55%),
+      linear-gradient(155deg,#1e1b4b 0%,#0b0a1f 70%)"></div>
+
+  <div class="pad">
+    <div class="brand">
+      <svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm51.58,57.79-32,64a4.08,4.08,0,0,1-1.79,1.79l-64,32a4,4,0,0,1-5.37-5.37l32-64a4.08,4.08,0,0,1,1.79-1.79l64-32A4,4,0,0,1,179.58,81.79Z"/></svg>
+      <span class="wm">VOYAGO</span>
+    </div>
+
+    <div style="margin-top:24mm">
+      <p class="eyebrow">Aplicación de viajes colaborativa</p>
+      <h1 class="display" style="margin-top:6mm">Organiza,<br>comparte y<br>recuerda<br>cada viaje.</h1>
+      <p class="lead" style="margin-top:8mm;max-width:96mm">
+        Todo un viaje —itinerario, mapa, gastos, fotos y recuerdos— en un
+        único espacio compartido.
+      </p>
+    </div>
+  </div>
+
+  <div style="position:absolute;right:-10mm;bottom:-34mm;display:flex;gap:6mm;align-items:flex-end">
+    <div class="phone" style="width:54mm;transform:rotate(-4deg) translateY(-10mm)"><img src="capturas/moments.png" alt="Momentos"></div>
+    <div class="phone" style="width:64mm;z-index:2"><img src="capturas/map-memories.png" alt="Mapa de recuerdos"></div>
+    <div class="phone" style="width:54mm;transform:rotate(4deg) translateY(-10mm)"><img src="capturas/home.png" alt="Inicio del viaje"></div>
+  </div>
+
+  <div class="folio"><span>Dossier de producto</span><span>2026</span></div>
+</section>
+
+<!-- ══════════════════════════ 2 · EL CONCEPTO ══════════════════════════ -->
+<section class="page">
+  <div class="pad col">
+    <p class="eyebrow">El concepto</p>
+    <h2 class="h1 mt6" style="max-width:160mm">
+      Voyago reúne todo tu viaje<br>en un solo lugar.
+    </h2>
+    <p class="lead mt6" style="max-width:130mm">
+      Hoy un viaje vive repartido entre notas, chats, carpetas de fotos y hojas
+      de cálculo. Voyago lo junta y lo mantiene conectado.
+    </p>
+
+    <div class="row mt16" style="gap:6mm">
+      <div class="grow feat">
+        <p class="num">01</p><p class="h3 mt2">Planifica</p>
+        <p class="cap mt2">Vuelos, hoteles, checklist e itinerario día a día.</p>
+      </div>
+      <div class="grow feat">
+        <p class="num">02</p><p class="h3 mt2">Organiza</p>
+        <p class="cap mt2">Lugares, gastos compartidos y balance automático.</p>
+      </div>
+      <div class="grow feat">
+        <p class="num">03</p><p class="h3 mt2">Comparte</p>
+        <p class="cap mt2">Participantes y visitantes, cada uno con lo suyo.</p>
+      </div>
+      <div class="grow feat">
+        <p class="num">04</p><p class="h3 mt2">Recuerda</p>
+        <p class="cap mt2">Fotos, momentos y comentarios sobre el mapa.</p>
+      </div>
+    </div>
+
+    <div class="row" style="gap:6mm;margin-top:18mm">
+      <div class="col grow">
+        <div class="phone"><img src="capturas/home.png" alt="Inicio del viaje"></div>
+        <p class="cap mt4" style="text-align:center">Inicio</p>
+      </div>
+      <div class="col grow">
+        <div class="phone"><img src="capturas/itinerary.png" alt="Itinerario"></div>
+        <p class="cap mt4" style="text-align:center">Itinerario</p>
+      </div>
+      <div class="col grow">
+        <div class="phone"><img src="capturas/map.png" alt="Mapa del viaje"></div>
+        <p class="cap mt4" style="text-align:center">Mapa</p>
+      </div>
+      <div class="col grow">
+        <div class="phone"><img src="capturas/gallery.png" alt="Galería"></div>
+        <p class="cap mt4" style="text-align:center">Galería</p>
+      </div>
+    </div>
+
+    <p class="h2" style="margin-top:14mm;max-width:158mm">
+      Y todo conectado entre sí: una foto sabe dónde se tomó, un gasto sabe en
+      qué lugar se hizo, un momento sabe qué día fue.
+    </p>
+  </div>
+  <div class="folio"><span>Voyago</span><span>02</span></div>
+</section>
+
+<!-- ══════════════════════════ 3 · TU VIAJE ══════════════════════════ -->
+<section class="page">
+  <div class="pad row" style="gap:12mm;align-items:center">
+    <div class="col" style="width:80mm">
+      <p class="eyebrow">Tu viaje</p>
+      <h2 class="h1 mt6">Un viaje.<br>Todo dentro.</h2>
+      <p class="lead mt6">
+        Cada viaje es un espacio propio con sus fechas, sus destinos y su gente.
+        Al abrirlo ves dónde estás y qué viene después.
+      </p>
+
+      <div class="mt12">
+        <hr class="rule">
+        <p class="h3" style="margin-top:4mm">Fechas y destinos</p>
+        <p class="cap" style="margin:1.5mm 0 4.5mm">El día que vas por dentro del viaje.</p>
+        <hr class="rule">
+        <p class="h3" style="margin-top:4mm">Gastos, fotos, lugares, momentos</p>
+        <p class="cap" style="margin:1.5mm 0 4.5mm">Cuatro cifras que resumen el viaje entero.</p>
+        <hr class="rule">
+        <p class="h3" style="margin-top:4mm">Lo próximo del itinerario</p>
+        <p class="cap" style="margin:1.5mm 0 4.5mm">Las siguientes actividades, con su hora.</p>
+        <hr class="rule">
+        <p class="h3" style="margin-top:4mm">Personas</p>
+        <p class="cap" style="margin-top:1.5mm">Quién viaja contigo, siempre visible.</p>
+      </div>
+    </div>
+
+    <div class="grow row center">
+      <div class="phone" style="width:84mm"><img src="capturas/home.png" alt="Pantalla de inicio del viaje"></div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>03</span></div>
+</section>
+
+<!-- ══════════════════════════ 4 · ITINERARIO ══════════════════════════ -->
+<section class="page">
+  <div class="pad col">
+    <p class="eyebrow">Itinerario</p>
+    <h2 class="h1 mt6">Planifica cada día.</h2>
+    <p class="lead mt6" style="max-width:132mm">
+      Una pestaña por día y una línea de tiempo por hora. Las actividades se
+      ordenan solas por fecha y hora de inicio.
+    </p>
+
+    <div class="row mt8" style="gap:3mm;flex-wrap:wrap">
+      <span class="chip">Se ordena solo</span>
+      <span class="chip">Ubicación propia</span>
+      <span class="chip">Lugares ya guardados</span>
+      <span class="chip">Hotel del día</span>
+    </div>
+
+    <div class="row mt10" style="gap:12mm;justify-content:center">
+      <div class="col" style="width:72mm">
+        <div class="phone"><img src="capturas/itinerary.png" alt="Itinerario por días"></div>
+        <p class="h3 mt4">El día, hora a hora</p>
+        <p class="cap mt2">Cada actividad con su icono, su lugar y sus notas. Cambias la hora y se recoloca sola.</p>
+      </div>
+      <div class="col" style="width:72mm">
+        <div class="phone"><img src="capturas/itinerary-map.png" alt="Mapa del itinerario del día"></div>
+        <p class="h3 mt4">El día, sobre el mapa</p>
+        <p class="cap mt2">Las paradas numeradas en el orden en que las harás, sin tocar el mapa general.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>04</span></div>
+</section>
+
+<!-- ══════════════════════════ 5 · MAPA ══════════════════════════ -->
+<section class="page dark">
+  <div style="position:absolute;inset:0;background:
+      radial-gradient(70% 55% at 88% 6%, #312e81 0%, transparent 60%),
+      linear-gradient(160deg,#14122e 0%,#0b0a1f 68%)"></div>
+  <div class="pad col">
+    <p class="eyebrow">Mapa</p>
+    <h2 class="h1 mt6">Todo tu viaje<br>sobre el mapa.</h2>
+    <p class="lead mt6" style="max-width:120mm">
+      El mapa es jerárquico: primero ves los lugares del viaje; al abrir uno,
+      se convierte en el mapa de sus recuerdos.
+    </p>
+
+    <p class="h2 mt8" style="max-width:150mm;color:#fff">
+      No es un mapa con chinchetas: es el viaje contado
+      <span class="hl">por dónde ocurrió</span>.
+    </p>
+
+    <div class="row mt10" style="gap:12mm;justify-content:center">
+      <div class="col" style="width:72mm">
+        <div class="phone"><img src="capturas/map.png" alt="Mapa general del viaje"></div>
+        <p class="h3 mt4">1 · El viaje entero</p>
+        <p class="cap mt2">Cada lugar con sus fotos y momentos contados, visitados y pendientes.</p>
+      </div>
+      <div class="col" style="width:72mm">
+        <div class="phone"><img src="capturas/map-memories.png" alt="Mapa de recuerdos de un lugar"></div>
+        <p class="h3 mt4">2 · Los recuerdos</p>
+        <p class="cap mt2">Cada foto en el punto exacto donde se tomó, agrupadas por cercanía.</p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>05</span></div>
+</section>
+
+<!-- ══════════════════════════ 6 · MOMENTOS ══════════════════════════ -->
+<section class="page">
+  <div class="pad row" style="gap:12mm;align-items:center">
+    <div class="col" style="width:92mm">
+      <p class="eyebrow">Momentos</p>
+      <h2 class="h1 mt6" style="font-size:33pt">Convierte tu viaje<br>en una historia<br>compartida.</h2>
+      <p class="lead mt6">
+        La foto manda. Debajo, quién lo vivió, dónde fue y lo que los demás
+        tienen que decir.
+      </p>
+
+      <div class="row mt12" style="gap:7mm">
+        <div class="grow">
+          <p class="h3">Comentarios</p>
+          <p class="cap mt2">Todo el viaje puede responder, también quien se quedó en casa.</p>
+        </div>
+        <div class="grow">
+          <p class="h3">Sin “me gusta”</p>
+          <p class="cap mt2">Un viaje no se mide en likes. Aquí solo se conversa.</p>
+        </div>
+      </div>
+      <div class="row mt8" style="gap:7mm">
+        <div class="grow">
+          <p class="h3">Compartir nativo</p>
+          <p class="cap mt2">Se abre la hoja de compartir del móvil, como en cualquier app.</p>
+        </div>
+        <div class="grow">
+          <p class="h3">Varias fotos</p>
+          <p class="cap mt2">Carrusel que se pasa con el dedo.</p>
+        </div>
+      </div>
+
+      <p class="body mt12" style="font-size:12.5pt;line-height:1.5;color:var(--ink)">
+        Un momento nace de una foto y hereda <span class="hl">su fecha y su
+        ubicación</span>: aparece solo en el mapa.
+      </p>
+    </div>
+
+    <div class="grow row center">
+      <div class="phone" style="width:82mm"><img src="capturas/moments.png" alt="Muro de momentos"></div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>06</span></div>
+</section>
+
+<!-- ══════════════════════════ 7 · GALERÍA ══════════════════════════ -->
+<section class="page">
+  <div class="pad col">
+    <p class="eyebrow">Galería</p>
+    <h2 class="h1 mt6">Todos los recuerdos<br>de tu viaje, organizados.</h2>
+
+    <div class="row mt12" style="gap:12mm;align-items:flex-start">
+      <div class="phone" style="width:78mm"><img src="capturas/gallery.png" alt="Galería del viaje"></div>
+
+      <div class="col grow">
+        <p class="lead">
+          Las fotos de todo el grupo en un mismo sitio, agrupadas por fecha,
+          por lugar o por quién las hizo.
+        </p>
+
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:3mm;margin-top:9mm">
+          <div class="tile" style="height:32mm"><img src="assets/fotos/01-torii-atardecer.svg" alt=""></div>
+          <div class="tile" style="height:32mm"><img src="assets/fotos/06-ramen.svg" alt=""></div>
+          <div class="tile" style="height:32mm"><img src="assets/fotos/09-bosque-bambu.svg" alt=""></div>
+          <div class="tile" style="height:32mm"><img src="assets/fotos/03-shibuya-noche.svg" alt=""></div>
+          <div class="tile" style="height:32mm"><img src="assets/fotos/02-monte-fuji.svg" alt=""></div>
+          <div class="tile" style="height:32mm"><img src="assets/fotos/05-callejon-linternas.svg" alt=""></div>
+        </div>
+
+        <div class="mt10">
+          <p class="h3">Por fecha, lugar o persona</p>
+          <p class="cap mt2">Tres formas de recorrer lo mismo.</p>
+          <p class="h3 mt6">Una foto, muchos sitios</p>
+          <p class="cap mt2">La misma imagen vive en la galería, en un momento y en el mapa sin duplicarse.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>07</span></div>
+</section>
+
+<!-- ══════════════════════════ 8 · PREPARACIÓN ══════════════════════════ -->
+<section class="page">
+  <div class="pad col">
+    <p class="eyebrow">Preparación</p>
+    <h2 class="h1 mt6">Prepárate antes de salir.</h2>
+    <p class="lead mt6" style="max-width:134mm">
+      Cuatro apartados para que el día de salir no falte nada:
+      <strong>vuelos, hoteles, coche</strong> y una checklist compartida.
+    </p>
+
+    <div class="row mt12" style="gap:8mm">
+      <div class="col grow">
+        <div class="phone"><img src="capturas/flights.png" alt="Vuelos"></div>
+        <p class="h3 mt4">Vuelos</p>
+        <p class="cap mt2">Origen, destino, terminales, horarios y localizador.</p>
+      </div>
+      <div class="col grow">
+        <div class="phone"><img src="capturas/preparation.png" alt="Hoteles"></div>
+        <p class="h3 mt4">Hoteles</p>
+        <p class="cap mt2">Check-in, check-out, noches y dirección copiable de un toque.</p>
+      </div>
+      <div class="col grow">
+        <div class="phone"><img src="capturas/checklist.png" alt="Checklist"></div>
+        <p class="h3 mt4">Otros</p>
+        <p class="cap mt2">La lista de lo que no se puede olvidar, repartida entre todos.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:14mm;border-radius:4mm;background:var(--surface2);padding:7mm 8mm">
+      <p class="h2">Sin documentos sensibles, por diseño</p>
+      <p class="body mt3" style="max-width:150mm">
+        Voyago no almacena pasaportes, documentos de identidad ni tarjetas
+        bancarias. Solo los datos de la reserva: quién, dónde y cuándo.
+      </p>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>08</span></div>
+</section>
+
+<!-- ══════════════════════════ 9 · VIAJE COMPARTIDO ══════════════════════════ -->
+<section class="page">
+  <div class="pad row" style="gap:12mm;align-items:center">
+    <div class="col" style="width:84mm">
+      <p class="eyebrow">Viaje compartido</p>
+      <h2 class="h1 mt6">Cada uno ve<br>lo que le toca.</h2>
+      <p class="lead mt6">
+        Se invita por identificador público
+        —<span style="font-family:ui-monospace,Consolas,monospace;font-size:12pt">Nombre#0000</span>—
+        y el rol se elige antes de enviar la invitación.
+      </p>
+
+      <div class="mt12">
+        <div class="box">
+          <p class="h3">Propietario</p>
+          <p class="cap mt2">Crea el viaje, invita y gestiona a los participantes.</p>
+        </div>
+        <div class="box mt4">
+          <p class="h3">Participante</p>
+          <p class="cap mt2">Acceso completo: edita itinerario, gastos, lugares y preparación.</p>
+        </div>
+        <div class="box mt4" style="border:.8mm solid var(--brand);background:var(--brand-50)">
+          <p class="h3" style="color:var(--brand-900)">Visitante</p>
+          <p class="cap mt2" style="color:#4338ca">
+            Ve el mapa, el itinerario, la galería y los momentos —y comenta—.
+            Los gastos y la preparación no existen para él.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grow row center">
+      <div class="phone" style="width:78mm"><img src="capturas/members.png" alt="Participantes y roles"></div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>09</span></div>
+</section>
+
+<!-- ══════════════════════════ 10 · EL CICLO ══════════════════════════ -->
+<section class="page">
+  <div class="pad col">
+    <p class="eyebrow">Antes, durante y después</p>
+    <h2 class="h1 mt6">Voyago acompaña<br>todo el viaje.</h2>
+
+    <div class="row mt12" style="gap:8mm">
+      <div class="col grow">
+        <span class="chip">Antes</span>
+        <div class="phone mt6"><img src="capturas/checklist.png" alt="Preparación antes del viaje"></div>
+        <p class="body mt6">
+          Vuelos y hoteles guardados.<br>
+          Checklist repartida.<br>
+          Itinerario montado.
+        </p>
+      </div>
+
+      <div class="col grow">
+        <span class="chip">Durante</span>
+        <div class="phone mt6"><img src="capturas/map.png" alt="Mapa durante el viaje"></div>
+        <p class="body mt6">
+          El plan del día a mano.<br>
+          Gastos según se pagan.<br>
+          Fotos y momentos sobre la marcha.
+        </p>
+      </div>
+
+      <div class="col grow">
+        <span class="chip">Después</span>
+        <div class="phone mt6"><img src="capturas/moments.png" alt="Recuerdos después del viaje"></div>
+        <p class="body mt6">
+          Las cuentas, cuadradas.<br>
+          La galería, completa.<br>
+          El viaje, guardado para releerlo.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago</span><span>10</span></div>
+</section>
+
+<!-- ══════════════════════════ 11 · CIERRE ══════════════════════════ -->
+<section class="page dark">
+  <div style="position:absolute;inset:0;background:
+      radial-gradient(85% 60% at 15% 100%, #4f46e5 0%, transparent 55%),
+      radial-gradient(70% 55% at 90% 0%, #f97316 0%, transparent 50%),
+      linear-gradient(150deg,#1e1b4b,#0b0a1f 72%)"></div>
+
+  <div class="pad col" style="justify-content:space-between">
+    <div>
+      <div class="brand">
+        <svg viewBox="0 0 256 256"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm51.58,57.79-32,64a4.08,4.08,0,0,1-1.79,1.79l-64,32a4,4,0,0,1-5.37-5.37l32-64a4.08,4.08,0,0,1,1.79-1.79l64-32A4,4,0,0,1,179.58,81.79Z"/></svg>
+        <span class="wm">VOYAGO</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5mm;margin-top:14mm">
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Mapa</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/map-memories.png" style="margin-top:-16mm" alt=""></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Itinerario</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/itinerary.png" style="margin-top:-16mm" alt=""></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Momentos</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/moments.png" style="margin-top:-16mm" alt=""></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Galería</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/gallery.png" style="margin-top:-22mm" alt=""></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Preparación</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/flights.png" style="margin-top:-22mm" alt=""></div>
+        </div>
+        <div>
+          <p class="eyebrow" style="color:rgba(255,255,255,.5)">Personas</p>
+          <div class="crop mt3" style="height:50mm"><img src="capturas/members.png" style="margin-top:-16mm" alt=""></div>
+        </div>
+      </div>
+
+      <p class="lead" style="margin-top:14mm;max-width:150mm">
+        Seis secciones, un mismo viaje. Lo que planificas, lo que gastas y lo
+        que recuerdas viven conectados entre sí.
+      </p>
+    </div>
+
+    <div style="padding-bottom:10mm">
+      <h2 class="h1" style="max-width:160mm">
+        Tu viaje. Tus lugares.<br>Tus recuerdos.<br><span class="hl">En un solo lugar.</span>
+      </h2>
+    </div>
+  </div>
+  <div class="folio"><span>Voyago · Dossier de producto</span><span>11</span></div>
+</section>
+
+</body>
+</html>

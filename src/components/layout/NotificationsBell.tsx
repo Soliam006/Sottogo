@@ -118,8 +118,17 @@ export function NotificationsBell() {
               <li key={invitation.id} className="rounded-2xl border border-subtle p-4">
                 <p className="text-sm ink-primary">
                   <span className="font-semibold">{invitation.sender?.name ?? "Alguien"}</span> te ha
-                  invitado al viaje{" "}
-                  <span className="font-semibold">“{invitation.trip?.name}”</span>.
+                  invitado{" "}
+                  {invitation.trip?.name ? (
+                    <>
+                      al viaje <span className="font-semibold">“{invitation.trip.name}”</span>
+                    </>
+                  ) : (
+                    // Sin nombre no se ensenan unas comillas vacias: pasa si el
+                    // viaje se borro entre medias.
+                    "a un viaje"
+                  )}
+                  .
                 </p>
                 {invitation.trip && (
                   <p className="mt-1 text-xs ink-muted">

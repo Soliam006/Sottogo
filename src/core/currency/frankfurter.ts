@@ -1,9 +1,13 @@
-import type { ExchangeRateProvider } from "./types";
+import { ExchangeRateError, type ExchangeRateProvider } from "./types";
 
 /**
  * Tipos de cambio del Banco Central Europeo via frankfurter.app.
  * Gratuito y sin API key. Solo se invoca desde el servidor
  * (src/app/api/exchange-rate) para poder cachear y aislar el proveedor.
+ *
+ * OJO con su cobertura: el BCE publica ~30 divisas. Quedan fuera, entre otras,
+ * el guarani, el peso argentino, el peso chileno y el dirham. Para esas, ver
+ * `OpenErApiRateProvider`.
  */
 export class FrankfurterRateProvider implements ExchangeRateProvider {
   readonly id = "frankfurter";
@@ -29,5 +33,3 @@ export class FrankfurterRateProvider implements ExchangeRateProvider {
     return rate;
   }
 }
-
-export class ExchangeRateError extends Error {}

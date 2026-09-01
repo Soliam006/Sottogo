@@ -1,4 +1,5 @@
 import type { Expense, ExpenseCategory, UUID } from "@/core/models";
+import { currencyDecimals, roundForCurrency } from "@/core/currency";
 import { EXPENSE_CATEGORIES } from "./categories";
 
 /**
@@ -35,9 +36,26 @@ export function baseAmount(expense: Expense): number {
   return expense.convertedAmount ?? expense.amount;
 }
 
+/**
+ * Recorte de coma flotante para totales de solo lectura (categorias y dias).
+ * No decide reparto, asi que no necesita conocer la divisa: en una divisa sin
+ * fraccion los sumandos ya son enteros y esto es la identidad.
+ */
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-export function computeBalance(expenses: Expense[], memberIds: UUID[]): TripBalance {
+/**
+ * Reparto y liquidacion en la MONEDA BASE del viaje.
+ *
+ * `currency` no es decorativo: decide la unidad minima en la que se reparte.
+ * Repartir siempre en centimos daba partes de "333.333,33 ₲" en un viaje en
+ * guaranies, una divisa que no tiene fraccion.
+ */
+export function computeBalance(
+  expenses: Expense[],
+  memberIds: UUID[],
+  currency: string,
+): TripBalance {
+  const round = (n: number) => roundForCurrency(n, currency);
   const paid = new Map<UUID, number>(memberIds.map((id) => [id, 0]));
 
   let total = 0;
@@ -47,37 +65,47 @@ export function computeBalance(expenses: Expense[], memberIds: UUID[]): TripBala
     // Un pagador que ya no es miembro sigue contando en el total pero no reparte.
     paid.set(e.paidBy, (paid.get(e.paidBy) ?? 0) + amount);
   }
-  total = round2(total);
+  total = round(total);
 
-  // Reparto a partes iguales al centimo: el resto se distribuye entre los
-  // primeros participantes para que la suma de partes cuadre con el total.
+  // Reparto a partes iguales en la unidad minima de la divisa: el resto se
+  // distribuye entre los primeros participantes para que la suma de partes
+  // cuadre exactamente con el total.
   const participants = memberIds.length || 1;
-  const totalCents = Math.round(total * 100);
-  const baseCents = Math.floor(totalCents / participants);
-  const remainder = totalCents - baseCents * participants;
+  const factor = 10 ** currencyDecimals(currency);
+  const totalUnits = Math.round(total * factor);
+  const baseUnits = Math.floor(totalUnits / participants);
+  const remainder = totalUnits - baseUnits * participants;
 
   const perMember: MemberBalance[] = memberIds.map((id, index) => {
-    const shareCents = baseCents + (index < remainder ? 1 : 0);
-    const share = shareCents / 100;
-    const p = round2(paid.get(id) ?? 0);
-    return { userId: id, paid: p, share, net: round2(p - share) };
+    const share = (baseUnits + (index < remainder ? 1 : 0)) / factor;
+    const p = round(paid.get(id) ?? 0);
+    return { userId: id, paid: p, share, net: round(p - share) };
   });
 
-  return { total, perMember, settlements: computeSettlements(perMember) };
+  return { total, perMember, settlements: computeSettlements(perMember, currency) };
 }
 
 /**
  * Liquidacion con numero minimo de transferencias (greedy sobre deudores/acreedores).
  * Suficiente y estable para grupos de viaje; no busca el optimo global (NP-hard).
  */
-export function computeSettlements(perMember: MemberBalance[]): Settlement[] {
+export function computeSettlements(
+  perMember: MemberBalance[],
+  currency: string,
+): Settlement[] {
+  const round = (n: number) => roundForCurrency(n, currency);
+  // Media unidad minima: por debajo de eso no hay nada que transferir. Con el
+  // 0,01 fijo de antes, un viaje en guaranies arrastraba saldos de medio
+  // guarani que generaban liquidaciones de importe cero.
+  const eps = 0.5 / 10 ** currencyDecimals(currency);
+
   const debtors = perMember
-    .filter((m) => m.net < -0.01)
+    .filter((m) => m.net < -eps)
     .map((m) => ({ id: m.userId, amount: -m.net }))
     .sort((a, b) => b.amount - a.amount);
 
   const creditors = perMember
-    .filter((m) => m.net > 0.01)
+    .filter((m) => m.net > eps)
     .map((m) => ({ id: m.userId, amount: m.net }))
     .sort((a, b) => b.amount - a.amount);
 
@@ -86,14 +114,14 @@ export function computeSettlements(perMember: MemberBalance[]): Settlement[] {
   let j = 0;
 
   while (i < debtors.length && j < creditors.length) {
-    const amount = round2(Math.min(debtors[i].amount, creditors[j].amount));
-    if (amount > 0.01) {
+    const amount = round(Math.min(debtors[i].amount, creditors[j].amount));
+    if (amount > eps) {
       settlements.push({ fromUserId: debtors[i].id, toUserId: creditors[j].id, amount });
     }
-    debtors[i].amount = round2(debtors[i].amount - amount);
-    creditors[j].amount = round2(creditors[j].amount - amount);
-    if (debtors[i].amount <= 0.01) i += 1;
-    if (creditors[j].amount <= 0.01) j += 1;
+    debtors[i].amount = round(debtors[i].amount - amount);
+    creditors[j].amount = round(creditors[j].amount - amount);
+    if (debtors[i].amount <= eps) i += 1;
+    if (creditors[j].amount <= eps) j += 1;
   }
 
   return settlements;

@@ -92,8 +92,8 @@ export function ExpensesView() {
   const display = useDisplayCurrency(trip?.baseCurrency ?? "EUR", localCurrency);
 
   const balance = useMemo(
-    () => computeBalance(expenses, members.map((m) => m.userId)),
-    [expenses, members],
+    () => computeBalance(expenses, members.map((m) => m.userId), trip?.baseCurrency ?? "EUR"),
+    [expenses, members, trip?.baseCurrency],
   );
   const categories = useMemo(() => totalsByCategory(expenses), [expenses]);
 

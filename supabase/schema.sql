@@ -138,13 +138,20 @@ create table if not exists public.trip_places (
   visited_at date,
   -- Portada elegida a mano entre las fotos del lugar. Si esta vacia se sigue
   -- usando la primera foto asignada, que es el comportamiento de siempre.
-  cover_photo_id uuid references public.photos(id) on delete set null,
+  --
+  -- SIN clave foranea a proposito: `photos.trip_place_id` ya apunta aqui, y una
+  -- segunda relacion en sentido contrario dejaba AMBIGUO el embebido de
+  -- PostgREST ("more than one relationship was found"), rompiendo la galeria.
+  -- La integridad la resuelve el codigo: `coverPhotoOf` comprueba que la foto
+  -- elegida siga entre las del lugar y, si no, cae a la primera.
+  cover_photo_id uuid,
   created_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (trip_id, place_id)
 );
-alter table public.trip_places
-  add column if not exists cover_photo_id uuid references public.photos(id) on delete set null;
+alter table public.trip_places add column if not exists cover_photo_id uuid;
+-- Quita la clave foranea si se llego a crear (ver la nota de arriba).
+alter table public.trip_places drop constraint if exists trip_places_cover_photo_id_fkey;
 create index if not exists trip_places_trip_idx on public.trip_places (trip_id);
 
 -- ---------------------------------------------------------------------------
@@ -509,6 +516,32 @@ as $$
   );
 $$;
 
+/*
+ * Invitacion pendiente hacia mi.
+ *
+ * Existe por el pescadilla-que-se-muerde-la-cola de las invitaciones: para ver
+ * el viaje hay que ser miembro, y uno acepta la invitacion justamente para
+ * serlo. Sin esto la notificacion sabe QUIEN te invita (profiles ya tiene su
+ * propia rama para invitaciones) pero no A QUE.
+ *
+ * Solo abre la fila de `trips`: el resto del contenido sigue exigiendo
+ * pertenencia. Y deja de aplicar en cuanto la invitacion no esta pendiente.
+ */
+create or replace function public.has_pending_invitation(p_trip uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.trip_invitations
+    where trip_id = p_trip
+      and receiver_id = auth.uid()
+      and status = 'pending'
+  );
+$$;
+
 -- El creador entra automaticamente como owner
 create or replace function public.handle_new_trip()
 returns trigger
@@ -669,7 +702,12 @@ create policy profiles_update_self on public.profiles
 -- viaje siempre falla con 42501.
 drop policy if exists trips_select_member on public.trips;
 create policy trips_select_member on public.trips
-  for select using (owner_id = auth.uid() or public.is_trip_member(id));
+  for select using (
+    owner_id = auth.uid()
+    or public.is_trip_member(id)
+    -- Quien tiene una invitacion pendiente puede ver el viaje al que le invitan.
+    or public.has_pending_invitation(id)
+  );
 
 drop policy if exists trips_insert_own on public.trips;
 create policy trips_insert_own on public.trips
