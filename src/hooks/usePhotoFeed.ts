@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Photo } from "@/core/models";
+import { appendBatch, hasMore as hasMoreThan } from "@/core/photos/feed";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { photosRepo } from "@/services/repositories";
@@ -54,6 +55,12 @@ export function usePhotoFeed(tripId: string, onlyGallery: boolean): PhotoFeed {
   /** Paginas ya cargadas. Al refrescar se vuelven a pedir todas ellas. */
   const pages = useRef(1);
   /**
+   * Espejo de `photos`. Permite fusionar un lote nuevo y decidir el total sin
+   * meter efectos dentro de un actualizador de estado, que React puede llamar
+   * dos veces.
+   */
+  const loaded = useRef<Photo[]>([]);
+  /**
    * Cada peticion se queda con su numero. Si al volver ya no es la ultima, se
    * descarta: cambiar de ambito dos veces rapido no debe dejar el lote viejo.
    */
@@ -88,6 +95,7 @@ export function usePhotoFeed(tripId: string, onlyGallery: boolean): PhotoFeed {
 
         if (!mounted.current || ticket !== request.current) return;
         pages.current = count;
+        loaded.current = signed;
         setPhotos(signed);
         setTotal(page.total);
         setTotals(counts);
@@ -106,13 +114,14 @@ export function usePhotoFeed(tripId: string, onlyGallery: boolean): PhotoFeed {
   // Cambiar de viaje o de ambito empieza de cero.
   useEffect(() => {
     pages.current = 1;
+    loaded.current = [];
     setPhotos([]);
     setTotal(0);
     setLoading(true);
     void loadFromStart(1);
   }, [loadFromStart]);
 
-  const hasMore = photos.length < total;
+  const hasMore = hasMoreThan(photos, total);
 
   const loadMore = useCallback(() => {
     if (loading || loadingMore || !hasMore || !tripId) return;
@@ -131,13 +140,13 @@ export function usePhotoFeed(tripId: string, onlyGallery: boolean): PhotoFeed {
 
         if (!mounted.current || ticket !== request.current) return;
         pages.current += 1;
-        setTotal(page.total);
-        // Se descartan las que ya estuvieran: si alguien sube una foto entre
-        // dos lotes, las filas se desplazan y una podria repetirse.
-        setPhotos((prev) => {
-          const seen = new Set(prev.map((photo) => photo.id));
-          return [...prev, ...signed.filter((photo) => !seen.has(photo.id))];
-        });
+
+        // La fusion (sin repetidas, y con el total corregido si el lote viene
+        // vacio) vive en `core/photos/feed` para poder probarla sin navegador.
+        const next = appendBatch(loaded.current, { photos: signed, total: page.total });
+        loaded.current = next.photos;
+        setPhotos(next.photos);
+        setTotal(next.total);
       } catch (err) {
         if (mounted.current && ticket === request.current) setError(errorMessage(err));
       } finally {
