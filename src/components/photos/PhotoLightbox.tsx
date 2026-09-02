@@ -48,8 +48,9 @@ export function PhotoLightbox({
   if (!mounted) return null;
 
   return createPortal(
+    // 300: por debajo de Modal (400), que se abre desde aqui. Ver Modal.tsx.
     <div className="fixed inset-0 z-[300] flex flex-col bg-black/92">
-      <div className="flex items-center justify-between px-4 py-3 text-white">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3 text-white">
         <span className="text-sm text-white/70 tabular-nums">
           {index + 1} / {photos.length}
         </span>
@@ -60,7 +61,12 @@ export function PhotoLightbox({
         </button>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center px-4">
+      {/* `min-h-0` es lo que hace que la foto quepa: un elemento flex nace con
+          `min-height: auto` y se niega a encogerse por debajo de su contenido,
+          asi que una foto alta empujaba el bloque fuera de la pantalla y se
+          llevaba por delante la barra de abajo. El `max-h-full` de la imagen se
+          medía contra un contenedor ya crecido, y no restringia nada. */}
+      <div className="relative flex min-h-0 flex-1 items-center justify-center px-4">
         {index > 0 && (
           <NavButton side="left" onClick={() => onNavigate(photos[index - 1])} />
         )}
@@ -75,7 +81,7 @@ export function PhotoLightbox({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 text-white">
+      <div className="safe-bottom flex shrink-0 flex-wrap items-center justify-between gap-3 px-5 py-4 text-white">
         <div className="min-w-0">
           {photo.description && <p className="truncate font-medium">{photo.description}</p>}
           <p className="flex items-center gap-2 text-sm text-white/60">
