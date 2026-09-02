@@ -1,0 +1,65 @@
+name: Fallo
+description: Algo no funciona como debería
+labels: ["tipo/fallo"]
+body:
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué ocurre
+      description: Lo que ves, no lo que crees que lo causa.
+      placeholder: Al borrar una foto desde la galería, el diálogo de confirmación no aparece.
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Cómo reproducirlo
+      description: Desde el principio, aunque parezca obvio.
+      placeholder: |
+        1. Abrir un viaje → Galería
+        2. Pulsar una foto
+        3. Pulsar Eliminar
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperabas
+    validations:
+      required: true
+
+  - type: dropdown
+    id: donde
+    attributes:
+      label: Dónde
+      options:
+        - PRE (develop)
+        - PRO (main)
+        - En local
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zona de la aplicación
+      options:
+        - Fotos y galería
+        - Mapa
+        - Itinerario
+        - Gastos
+        - Preparación
+        - Momentos
+        - Lugares
+        - Cuentas y permisos
+        - Otra / no lo sé
+    validations:
+      required: true
+
+  - type: textarea
+    id: entorno
+    attributes:
+      label: Dispositivo y navegador
+      placeholder: iPhone 14, Safari · o · Windows 11, Chrome 129

@@ -1,0 +1,44 @@
+name: Mejora
+description: Algo nuevo, o algo que existe pero podría estar mejor
+labels: ["tipo/mejora"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué problema resuelve
+      description: >
+        Empieza por la necesidad, no por la solución. Una mejora que no arregla
+        nada concreto suele acabar sin usarse.
+      placeholder: Al volver de un viaje no hay forma de ver cuánto puso cada uno sin abrir Gastos.
+    validations:
+      required: true
+
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Qué propones
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zona de la aplicación
+      options:
+        - Fotos y galería
+        - Mapa
+        - Itinerario
+        - Gastos
+        - Preparación
+        - Momentos
+        - Lugares
+        - Cuentas y permisos
+        - Transversal
+    validations:
+      required: true
+
+  - type: textarea
+    id: fuera
+    attributes:
+      label: Qué NO entra
+      description: Lo que deliberadamente se queda fuera. Acota el trabajo antes de empezarlo.

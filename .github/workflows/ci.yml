@@ -1,0 +1,47 @@
+name: CI
+
+# Se ejecuta en cada PR hacia develop (PRE) o main (PRO), y tambien al empujar
+# a esas ramas, para que el estado de la rama en si sea siempre visible.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Si llegan varios empujones seguidos al mismo PR, solo interesa el ultimo.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Tipos, estilo y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` y no `npm install`: instala exactamente lo del lock y falla si
+      # el lock y el package.json no concuerdan.
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar tipos
+        run: npx tsc --noEmit
+
+      - name: Comprobar estilo
+        run: npx eslint src
+
+      # No hacen falta las claves de Supabase: el build esta comprobado que pasa
+      # sin ellas. Asi no hay ni un secreto en el CI.
+      - name: Compilar
+        run: npm run build
