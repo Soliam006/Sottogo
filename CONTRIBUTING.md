@@ -65,9 +65,16 @@ npm run build
 
 Es exactamente lo que ejecuta el CI. Si pasa aquí, pasa allí.
 
-## La base de datos no tiene entorno propio todavía
+## La base de datos
 
-`supabase/schema.sql` es idempotente y se puede reejecutar. Lo que **no** hay
-hoy es un proyecto de Supabase separado para PRE: si PRE y PRO comparten base,
-una migración probada en PRE ya está tocando los datos de PRO. Mientras siga
-así, trata cualquier cambio de esquema como si fuera directo a producción.
+Cada entorno tiene la suya: `voyago-pre` para PRE, el proyecto original para
+PRO. Solo cambian dos variables (`NEXT_PUBLIC_SUPABASE_URL` y
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`); el resto de la configuración es idéntica.
+
+En local trabajas **siempre contra PRE**. Las claves de producción no deberían
+estar en tu portátil.
+
+`supabase/schema.sql` es idempotente: se ejecuta primero en PRE, se prueba con
+datos, y solo entonces en PRO al hacer el release.
+
+El montaje completo, paso a paso, está en [docs/entornos.md](docs/entornos.md).
