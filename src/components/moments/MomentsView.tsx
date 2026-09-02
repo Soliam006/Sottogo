@@ -21,7 +21,8 @@ import {
 } from "@/core/content/related";
 import { useTrip } from "@/components/providers/TripProvider";
 import { useSession } from "@/components/providers/SessionProvider";
-import { useMomentComments, useMoments, usePhotos } from "@/hooks/useTripCollections";
+import { useMomentComments, usePhotos } from "@/hooks/useTripCollections";
+import { useMomentFeed } from "@/hooks/useMomentFeed";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +31,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, TextArea, TextInput } from "@/components/ui/Field";
 import { Rating } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { LoadMore } from "@/components/ui/LoadMore";
 import { useConfirm } from "@/components/ui/ConfirmDialog";
 import { PhotoLightbox } from "@/components/photos/PhotoLightbox";
 import { MomentCard } from "./MomentCard";
@@ -48,12 +50,11 @@ export function MomentsView() {
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
 
-  const { data, loading, error, refresh } = useMoments(tripId);
+  const { moments, total, loading, error, hasMore, loadMore, refresh } = useMomentFeed(tripId);
   const { data: commentData, refresh: refreshComments } = useMomentComments(tripId);
   const [creating, setCreating] = useState(false);
   const [lightbox, setLightbox] = useState<{ photo: Photo; photos: Photo[] } | null>(null);
 
-  const moments = data ?? [];
   const userId = session?.user?.id ?? null;
 
   // Los comentarios llegan en una sola consulta y se reparten por momento.
@@ -102,13 +103,19 @@ export function MomentsView() {
     }
   }
 
-  if (loading && !data) return <LoadingState label="Cargando momentos…" />;
+  if (loading) return <LoadingState label="Cargando momentos…" />;
 
   return (
     <div className="app-page max-w-4xl space-y-6">
       <PageHeader
         title="Momentos"
-        subtitle="Los recuerdos que querrás releer dentro de años."
+        subtitle={
+          // Mientras queden lotes se dice cuantos se ven de cuantos: sin eso,
+          // en un viaje de cuarenta momentos pareceria que solo hay cinco.
+          hasMore
+            ? `${moments.length} de ${total} momentos`
+            : "Los recuerdos que querrás releer dentro de años."
+        }
         action={canEdit ? <Button onClick={() => setCreating(true)}>+ Momento</Button> : undefined}
       />
 
@@ -143,6 +150,15 @@ export function MomentsView() {
             </li>
           ))}
         </ul>
+      )}
+
+      {moments.length > 0 && (
+        <LoadMore
+          hasMore={hasMore}
+          count={moments.length}
+          onLoadMore={loadMore}
+          label="Cargando más momentos…"
+        />
       )}
 
       {creating && (
