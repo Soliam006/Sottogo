@@ -11,7 +11,7 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { usePhotoFeed } from "@/hooks/usePhotoFeed";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button, Spinner } from "@/components/ui/Button";
 import { GalleryIcon } from "@/components/ui/icons";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -34,7 +34,7 @@ export function GalleryView() {
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
   const [scope, setScope] = useState<Scope>("gallery");
   const feed = usePhotoFeed(tripId, scope === "gallery");
-  const { photos, totals, loading, loadingMore, error, hasMore, loadMore, refresh } = feed;
+  const { photos, totals, loading, error, hasMore, loadMore, refresh } = feed;
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState<Photo | null>(null);
   const [relating, setRelating] = useState<Photo | null>(null);
@@ -49,15 +49,18 @@ export function GalleryView() {
   const hiddenCount = totals.all - totals.gallery;
   const total = scope === "all" ? totals.all : totals.gallery;
 
-  // Centinela al final de la cuadricula. Pide el siguiente lote 600 px antes
-  // de llegar, para que el desplazamiento no se corte esperando.
+  // Centinela al final de la cuadricula.
+  //
+  // Sin `rootMargin`: el siguiente lote se pide cuando el centinela entra de
+  // verdad en pantalla, es decir al llegar al final de las fotos que ya hay.
+  // Con margen se adelantaba y cargaba cosas que aun no se veian, que es
+  // trabajo (y trafico) que quiza nadie iba a mirar.
   const sentinel = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !hasMore) return;
     const observer = new IntersectionObserver(
       (entries) => entries[0]?.isIntersecting && loadMore(),
-      { rootMargin: "600px" },
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -197,17 +200,18 @@ export function GalleryView() {
           {/* El centinela vive fuera de la cuadricula: si estuviera dentro de
               un grupo, cambiar de agrupacion lo desmontaria y el observador
               dejaria de disparar. */}
+          {/* Llegar hasta aqui es lo que pide el lote siguiente, asi que se
+              ensena la rueda directamente: entre que el centinela aparece y
+              empieza la carga no hay hueco que merezca otro estado. */}
           {hasMore && (
-            <div ref={sentinel} className="flex justify-center py-6">
-              {loadingMore ? (
-                <span className="text-sm ink-muted">Cargando más fotos…</span>
-              ) : (
-                // Alternativa manual: si el navegador no soporta el observador,
-                // o alguien navega con teclado, el boton sigue estando.
-                <Button variant="secondary" onClick={loadMore}>
-                  Ver más
-                </Button>
-              )}
+            <div
+              ref={sentinel}
+              className="flex items-center justify-center gap-2 py-8 ink-muted"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner className="h-5 w-5" />
+              <span className="text-sm">Cargando más fotos…</span>
             </div>
           )}
         </>

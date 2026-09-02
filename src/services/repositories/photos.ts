@@ -63,6 +63,13 @@ export const photosRepo = {
       .order("id", { ascending: false })
       .range(query.offset, query.offset + query.limit - 1);
 
+    // PostgREST responde 416 (PGRST103) si el desplazamiento se pasa del final.
+    // No es un fallo: significa que ya no queda nada, y pasa de verdad si
+    // alguien borra fotos mientras otro esta navegando la galeria.
+    if (result.error?.code === "PGRST103") {
+      return { photos: [], total: result.count ?? 0 };
+    }
+
     return {
       photos: asRows(unwrap(result, "Listar fotos")).map(toPhoto),
       total: result.count ?? 0,
@@ -83,8 +90,11 @@ export const photosRepo = {
         .eq("in_gallery", true),
     ]);
 
-    unwrap(all, "Contar fotos");
-    unwrap(gallery, "Contar fotos de la galeria");
+    // `unwrapVoid` y no `unwrap`: con `head: true` PostgREST no devuelve cuerpo,
+    // asi que `data` es null y `unwrap` lo tomaria por un fallo. Lo unico que
+    // interesa comprobar aqui es que no haya error; la cuenta viaja aparte.
+    unwrapVoid(all, "Contar fotos");
+    unwrapVoid(gallery, "Contar fotos de la galeria");
     return { all: all.count ?? 0, gallery: gallery.count ?? 0 };
   },
 
