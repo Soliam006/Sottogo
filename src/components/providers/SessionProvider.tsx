@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { UserProfile } from "@/core/models";
 import { toUserProfile } from "@/services/mappers";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
+import { forgetSignedUrls } from "@/services/storage/photoStorage";
 
 interface SessionContextValue {
   session: Session | null;
@@ -61,6 +62,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       },
       signOut: async () => {
         await getSupabaseBrowserClient().auth.signOut();
+        // Las URLs firmadas siguen dando acceso al fichero hasta que caducan:
+        // no deben sobrevivir a la sesion que las pidio.
+        forgetSignedUrls();
         window.location.href = "/login";
       },
     }),
