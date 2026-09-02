@@ -52,7 +52,18 @@ export function Modal({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center sm:p-4">
+    /*
+     * Escalera de capas (todas portadas a <body>, asi que mandan estos numeros):
+     *   40   cabecera y navegacion inferior
+     *   300  PhotoLightbox
+     *   400  Modal  <- aqui
+     *   999  avisos (ToastProvider)
+     *
+     * El modal va POR ENCIMA del visor y no al reves: tanto la confirmacion de
+     * borrado como "Hacer algo mas" se abren DESDE el visor, con la foto aun
+     * abierta. Con z-[200] quedaban detras y parecia que no pasaba nada.
+     */
+    <div className="fixed inset-0 z-[400] flex items-end justify-center sm:items-center sm:p-4">
       <div
         className="absolute inset-0 animate-fade bg-black/45 backdrop-blur-sm"
         onClick={onClose}
