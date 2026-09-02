@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Photo } from "@/core/models";
 import { formatDate } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
@@ -11,7 +11,8 @@ import { useTrip } from "@/components/providers/TripProvider";
 import { usePhotoFeed } from "@/hooks/usePhotoFeed";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button, Spinner } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
+import { LoadMore } from "@/components/ui/LoadMore";
 import { GalleryIcon } from "@/components/ui/icons";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -48,23 +49,6 @@ export function GalleryView() {
   // El recorte ya viene hecho de la consulta: aqui no se filtra nada.
   const hiddenCount = totals.all - totals.gallery;
   const total = scope === "all" ? totals.all : totals.gallery;
-
-  // Centinela al final de la cuadricula.
-  //
-  // Sin `rootMargin`: el siguiente lote se pide cuando el centinela entra de
-  // verdad en pantalla, es decir al llegar al final de las fotos que ya hay.
-  // Con margen se adelantaba y cargaba cosas que aun no se veian, que es
-  // trabajo (y trafico) que quiza nadie iba a mirar.
-  const sentinel = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const node = sentinel.current;
-    if (!node || !hasMore) return;
-    const observer = new IntersectionObserver(
-      (entries) => entries[0]?.isIntersecting && loadMore(),
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, loadMore, photos.length]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Photo[]>();
@@ -200,20 +184,12 @@ export function GalleryView() {
           {/* El centinela vive fuera de la cuadricula: si estuviera dentro de
               un grupo, cambiar de agrupacion lo desmontaria y el observador
               dejaria de disparar. */}
-          {/* Llegar hasta aqui es lo que pide el lote siguiente, asi que se
-              ensena la rueda directamente: entre que el centinela aparece y
-              empieza la carga no hay hueco que merezca otro estado. */}
-          {hasMore && (
-            <div
-              ref={sentinel}
-              className="flex items-center justify-center gap-2 py-8 ink-muted"
-              role="status"
-              aria-live="polite"
-            >
-              <Spinner className="h-5 w-5" />
-              <span className="text-sm">Cargando más fotos…</span>
-            </div>
-          )}
+          <LoadMore
+            hasMore={hasMore}
+            count={photos.length}
+            onLoadMore={loadMore}
+            label="Cargando más fotos…"
+          />
         </>
       )}
 
