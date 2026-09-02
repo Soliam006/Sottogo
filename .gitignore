@@ -1,7 +1,12 @@
 node_modules
 .next
 out
+
+# Cualquier .env con sufijo .local lleva credenciales y NUNCA se versiona.
+# Antes solo se ignoraban `.env` y `.env.local`: un `.env.pre.local` o un
+# `.env.development.local` se habrian subido sin avisar.
 .env
-.env.local
+.env*.local
+
 *.tsbuildinfo
 .DS_Store

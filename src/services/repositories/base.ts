@@ -10,7 +10,17 @@ export class RepositoryError extends Error {
   }
 }
 
-/** Traduce errores de Postgres a mensajes utiles para la UI. */
+/**
+ * Traduce errores de Postgres a mensajes utiles para la UI y exige que venga
+ * un resultado.
+ *
+ * NO sirve para consultas de solo conteo (`{ count: "exact", head: true }`):
+ * PostgREST responde 200 SIN cuerpo, asi que `data` es null y esto lo tomaria
+ * por un fallo. Ahi va `unwrapVoid`, y la cuenta se lee de `result.count`.
+ *
+ * Ya paso una vez: la Galeria entera se quedaba en "Contar fotos: sin
+ * resultados" con las fotos delante.
+ */
 export function unwrap<T>(result: { data: T | null; error: PostgrestError | null }, context: string): T {
   if (result.error) {
     throw new RepositoryError(humanize(result.error, context), result.error);
@@ -21,6 +31,10 @@ export function unwrap<T>(result: { data: T | null; error: PostgrestError | null
   return result.data;
 }
 
+/**
+ * Igual que `unwrap` pero sin exigir cuerpo. Para escrituras y para consultas
+ * de solo conteo.
+ */
 export function unwrapVoid(
   result: { error: PostgrestError | null },
   context: string,

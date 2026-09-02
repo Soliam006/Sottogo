@@ -13,6 +13,9 @@ import type { Photo, UUID } from "@/core/models";
 export const BUCKET = "trip-media";
 const SIGNED_URL_TTL = 60 * 60; // 1 h
 
+/** Un ano, en segundos. Ver el comentario de la subida. */
+const IMMUTABLE_CACHE_CONTROL = "31536000";
+
 /**
  * Lado mas largo de la imagen que se guarda. Una foto de movil ronda los
  * 4032x3024; se guarda como 2048x1536.
@@ -71,7 +74,14 @@ export async function uploadPhotoFile(
 
     const stored = await db.storage
       .from(BUCKET)
-      .upload(storagePath, display.blob, { contentType: display.type, upsert: false });
+      .upload(storagePath, display.blob, {
+        contentType: display.type,
+        upsert: false,
+        // La ruta lleva un UUID y nunca se sobrescribe (`upsert: false`), asi
+        // que el contenido de una direccion es inmutable: el navegador puede
+        // quedarselo sin volver a preguntar.
+        cacheControl: IMMUTABLE_CACHE_CONTROL,
+      });
     if (stored.error) throw new PhotoStorageError(stored.error.message);
 
     let thumbPath: string | null = null;
@@ -80,7 +90,11 @@ export async function uploadPhotoFile(
       thumbPath = `${tripId}/thumbs/${id}.${extensionForType(thumb.type, file)}`;
       const uploaded = await db.storage
         .from(BUCKET)
-        .upload(thumbPath, thumb.blob, { contentType: thumb.type, upsert: false });
+        .upload(thumbPath, thumb.blob, {
+          contentType: thumb.type,
+          upsert: false,
+          cacheControl: IMMUTABLE_CACHE_CONTROL,
+        });
       if (uploaded.error) thumbPath = null;
     } catch {
       thumbPath = null; // La galeria caera a la imagen grande si no hay miniatura.
@@ -180,10 +194,68 @@ function extensionForType(type: string, file: File): string {
 
 export async function removePhotoFiles(db: SupabaseClient, photo: Photo): Promise<void> {
   const paths = [photo.storagePath, photo.thumbPath].filter(Boolean) as string[];
-  if (paths.length) await db.storage.from(BUCKET).remove(paths);
+  if (!paths.length) return;
+
+  for (const path of paths) signedUrls.delete(path);
+  await db.storage.from(BUCKET).remove(paths);
 }
 
-/** Resuelve URLs firmadas en lote y las adjunta a los objetos de dominio. */
+/* ---------------------------------------------------------------------------
+   CACHE DE URLs FIRMADAS
+
+   Cada llamada a `createSignedUrls` devuelve un token nuevo, asi que la misma
+   foto llegaba con una direccion distinta cada vez. Para el navegador eso es
+   otro recurso: su cache fallaba y volvia a descargar las miniaturas enteras en
+   cada refresco, cada cambio de pestana y cada vez que alguien del viaje subia
+   una foto (el tiempo real refresca a todos).
+
+   Reutilizando la firma mientras siga viva, el navegador reconoce la direccion
+   y sirve la imagen de su disco: cero bytes.
+
+   Solo en memoria, a proposito. Una URL firmada da acceso al objeto a quien la
+   tenga, y guardarla en el almacenamiento del navegador alargaria su vida mas
+   alla de la pestana sin ganar gran cosa.
+   --------------------------------------------------------------------------- */
+
+interface SignedUrl {
+  url: string;
+  /** Momento en el que deja de servir, en milisegundos. */
+  expiresAt: number;
+}
+
+const signedUrls = new Map<string, SignedUrl>();
+
+/**
+ * Margen antes de caducar. Sin el, una URL a punto de expirar podria pedirse
+ * justo despues de vencer y dar un 400 en mitad de la galeria.
+ */
+const RENEW_BEFORE_MS = 5 * 60 * 1000;
+
+function cachedUrl(path: string): string | undefined {
+  const hit = signedUrls.get(path);
+  if (!hit) return undefined;
+
+  if (hit.expiresAt - RENEW_BEFORE_MS <= Date.now()) {
+    signedUrls.delete(path);
+    return undefined;
+  }
+  return hit.url;
+}
+
+/** Solo se recorre cuando hay firmas nuevas, no en cada lectura. */
+function forgetExpired(): void {
+  const now = Date.now();
+  for (const [path, entry] of signedUrls) {
+    if (entry.expiresAt <= now) signedUrls.delete(path);
+  }
+}
+
+/**
+ * Resuelve URLs firmadas y las adjunta a los objetos de dominio.
+ *
+ * Solo se piden las que no estan en cache, asi que abrir la galeria por
+ * segunda vez no firma nada.
+ */
 export async function attachSignedUrls(db: SupabaseClient, photos: Photo[]): Promise<Photo[]> {
   if (!photos.length) return photos;
 
@@ -193,22 +265,35 @@ export async function attachSignedUrls(db: SupabaseClient, photos: Photo[]): Pro
     if (p.thumbPath) paths.add(p.thumbPath);
   }
 
-  const { data, error } = await db.storage
-    .from(BUCKET)
-    .createSignedUrls([...paths], SIGNED_URL_TTL);
+  const missing = [...paths].filter((path) => cachedUrl(path) === undefined);
 
-  if (error || !data) return photos;
+  if (missing.length) {
+    const { data, error } = await db.storage.from(BUCKET).createSignedUrls(missing, SIGNED_URL_TTL);
 
-  const urls = new Map<string, string>();
-  for (const entry of data) {
-    if (entry.path && entry.signedUrl) urls.set(entry.path, entry.signedUrl);
+    if (!error && data) {
+      const expiresAt = Date.now() + SIGNED_URL_TTL * 1000;
+      for (const entry of data) {
+        if (entry.path && entry.signedUrl) {
+          signedUrls.set(entry.path, { url: entry.signedUrl, expiresAt });
+        }
+      }
+      forgetExpired();
+    }
+    // Si la firma falla, las que ya estaban en cache siguen sirviendo y las
+    // nuevas se quedan sin direccion: la cuadricula ensena su hueco en vez de
+    // vaciarse entera, que es lo que pasaba antes.
   }
 
   return photos.map((p) => ({
     ...p,
-    url: urls.get(p.storagePath),
-    thumbUrl: (p.thumbPath ? urls.get(p.thumbPath) : undefined) ?? urls.get(p.storagePath),
+    url: cachedUrl(p.storagePath),
+    thumbUrl: (p.thumbPath ? cachedUrl(p.thumbPath) : undefined) ?? cachedUrl(p.storagePath),
   }));
+}
+
+/** Vacia la cache. Al cerrar sesion no deben quedar firmas del viaje anterior. */
+export function forgetSignedUrls(): void {
+  signedUrls.clear();
 }
 
 function extensionFor(file: File): string {

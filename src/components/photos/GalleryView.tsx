@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Photo } from "@/core/models";
 import { formatDate } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
@@ -8,10 +8,10 @@ import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { photosRepo } from "@/services/repositories";
 import { removePhotoFiles } from "@/services/storage/photoStorage";
 import { useTrip } from "@/components/providers/TripProvider";
-import { usePhotos } from "@/hooks/useTripCollections";
+import { usePhotoFeed } from "@/hooks/usePhotoFeed";
 import { useToast } from "@/components/providers/ToastProvider";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/Button";
+import { Button, Spinner } from "@/components/ui/Button";
 import { GalleryIcon } from "@/components/ui/icons";
 import { SegmentedControl } from "@/components/ui/Misc";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -31,25 +31,40 @@ export function GalleryView() {
   const { toast } = useToast();
   const [confirm, confirmDialog] = useConfirm();
 
-  const { data, loading, error, refresh } = usePhotos(tripId);
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
   const [scope, setScope] = useState<Scope>("gallery");
+  const feed = usePhotoFeed(tripId, scope === "gallery");
+  const { photos, totals, loading, error, hasMore, loadMore, refresh } = feed;
   const [uploading, setUploading] = useState(false);
   const [selected, setSelected] = useState<Photo | null>(null);
   const [relating, setRelating] = useState<Photo | null>(null);
-
-  const all = useMemo(() => data ?? [], [data]);
 
   // La galeria muestra solo las fotos marcadas como tal. Las que nacen como
   // ticket de un gasto o adjunto de un momento siguen existiendo (y se ven en
   // su gasto / momento y en el mapa), pero no llenan la galeria salvo que se
   // haya pedido explicitamente. «Todas» las deja alcanzables para poder
   // promocionarlas o crear contenido desde ellas mas adelante.
-  const photos = useMemo(
-    () => (scope === "all" ? all : all.filter((photo) => photo.inGallery)),
-    [all, scope],
-  );
-  const hiddenCount = all.length - all.filter((photo) => photo.inGallery).length;
+  //
+  // El recorte ya viene hecho de la consulta: aqui no se filtra nada.
+  const hiddenCount = totals.all - totals.gallery;
+  const total = scope === "all" ? totals.all : totals.gallery;
+
+  // Centinela al final de la cuadricula.
+  //
+  // Sin `rootMargin`: el siguiente lote se pide cuando el centinela entra de
+  // verdad en pantalla, es decir al llegar al final de las fotos que ya hay.
+  // Con margen se adelantaba y cargaba cosas que aun no se veian, que es
+  // trabajo (y trafico) que quiza nadie iba a mirar.
+  const sentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => entries[0]?.isIntersecting && loadMore(),
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, photos.length]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Photo[]>();
@@ -104,13 +119,19 @@ export function GalleryView() {
     }
   }
 
-  if (loading && !data) return <LoadingState label="Cargando galería…" />;
+  if (loading) return <LoadingState label="Cargando galería…" />;
 
   return (
     <div className="app-page max-w-6xl space-y-6">
       <PageHeader
         title="Galería"
-        subtitle={`${photos.length} recuerdo${photos.length === 1 ? "" : "s"} compartido${photos.length === 1 ? "" : "s"}`}
+        subtitle={
+          // Mientras queden lotes por traer se dice cuantas se ven de cuantas:
+          // sin eso, "24 recuerdos" en un viaje de 300 fotos seria enganoso.
+          hasMore
+            ? `${photos.length} de ${total} recuerdos`
+            : `${total} recuerdo${total === 1 ? "" : "s"} compartido${total === 1 ? "" : "s"}`
+        }
         action={canEdit ? <Button onClick={() => setUploading(true)}>+ Foto</Button> : undefined}
       />
 
@@ -158,7 +179,7 @@ export function GalleryView() {
                 onChange={setScope}
                 options={[
                   { value: "gallery", label: "Galería" },
-                  { value: "all", label: "Todas", count: all.length },
+                  { value: "all", label: "Todas", count: totals.all },
                 ]}
               />
             )}
@@ -175,6 +196,24 @@ export function GalleryView() {
               </section>
             ))}
           </div>
+
+          {/* El centinela vive fuera de la cuadricula: si estuviera dentro de
+              un grupo, cambiar de agrupacion lo desmontaria y el observador
+              dejaria de disparar. */}
+          {/* Llegar hasta aqui es lo que pide el lote siguiente, asi que se
+              ensena la rueda directamente: entre que el centinela aparece y
+              empieza la carga no hay hueco que merezca otro estado. */}
+          {hasMore && (
+            <div
+              ref={sentinel}
+              className="flex items-center justify-center gap-2 py-8 ink-muted"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner className="h-5 w-5" />
+              <span className="text-sm">Cargando más fotos…</span>
+            </div>
+          )}
         </>
       )}
 
