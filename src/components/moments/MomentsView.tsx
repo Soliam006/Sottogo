@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Moment, MomentComment, Photo, TripPlace } from "@/core/models";
 import type { MemoryLocation } from "@/core/map/location";
-import { todayISO } from "@/lib/format";
+import { daysBetween, formatDate, todayISO } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { momentCommentsRepo, momentsRepo } from "@/services/repositories";
@@ -106,7 +106,7 @@ export function MomentsView() {
   if (loading) return <LoadingState label="Cargando momentos…" />;
 
   return (
-    <div className="app-page max-w-4xl space-y-6">
+    <div className="app-page max-w-2xl space-y-6">
       <PageHeader
         title="Momentos"
         subtitle={
@@ -133,9 +133,17 @@ export function MomentsView() {
           action={canEdit ? <Button onClick={() => setCreating(true)}>Crear momento</Button> : undefined}
         />
       ) : (
-        <ul className="space-y-1">
-          {moments.map((moment) => (
+        // Sin tarjetas: los momentos se separan con una linea, y esa linea
+        // la pone la propia lista.
+        <ul className="divide-y divide-[var(--border-subtle)]">
+          {moments.map((moment, index) => (
             <li key={moment.id}>
+              {/* El separador de dia solo aparece cuando cambia la fecha:
+                  convierte el muro en el diario del viaje en vez de en una
+                  lista. Es lo que un muro al uso no puede dar. */}
+              {moments[index - 1]?.date !== moment.date && (
+                <DiaDelViaje date={moment.date} start={trip?.startDate} end={trip?.endDate} />
+              )}
               <MomentCard
                 moment={moment}
                 members={members}
@@ -181,6 +189,38 @@ export function MomentsView() {
       )}
       {confirmDialog}
     </div>
+  );
+}
+
+/**
+ * Separador de dia del viaje.
+ *
+ * "Dia 6" solo tiene sentido dentro de las fechas del viaje: un momento
+ * fechado antes de salir o despues de volver ensena solo el dia natural.
+ */
+function DiaDelViaje({
+  date,
+  start,
+  end,
+}: {
+  date: string;
+  start?: string;
+  end?: string;
+}) {
+  const dentro = start && end && date >= start && date <= end;
+
+  return (
+    <p className="flex items-baseline gap-2 pt-7 text-[0.68rem] font-semibold uppercase tracking-[0.18em] ink-muted">
+      {dentro && (
+        <>
+          <span className="text-brand-600 dark:text-brand-300">
+            Día {daysBetween(start, date)}
+          </span>
+          <span aria-hidden>·</span>
+        </>
+      )}
+      <span>{formatDate(date, "day")}</span>
+    </p>
   );
 }
 
