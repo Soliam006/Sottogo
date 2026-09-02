@@ -16,8 +16,8 @@ import {
   PlaceIcon,
   PrevIcon,
   ShareIcon,
+  StarIcon,
 } from "@/components/ui/icons";
-import { Rating } from "@/components/ui/Misc";
 import { MomentComments } from "./MomentComments";
 
 /**
@@ -78,26 +78,26 @@ export function MomentCard({
   }
 
   return (
-    <article
-      id={`moment-${moment.id}`}
-      className="overflow-hidden max-w-full xl:max-w-[800px] rounded-xl border border-subtle surface-1 shadow-[0_1px_2px_rgb(0_0_0/0.04)]"
-    >
-      {/* Cabecera */}
-      <header className="flex items-center gap-3 px-4 py-3">
+    <article id={`moment-${moment.id}`} className="pb-6 pt-5">
+      {/* Cabecera: manda el LUGAR, no el autor.
+          En un viaje el "donde" es el eje que ordena el recuerdo; quien lo
+          subio es contexto. Es justo al reves que en un muro al uso, y es
+          parte de lo que hace que esto sea un diario y no una corriente. */}
+      <header className="flex items-center gap-3">
         <Avatar profile={author} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold ink-primary">
-            {author?.name ?? "Alguien"}
-          </p>
-          <p className="flex items-center gap-1 truncate text-xs ink-muted">
-            <span>{formatDate(moment.date, "long")}</span>
-            {place && (
-              <>
-                <span aria-hidden>·</span>
-                <PlaceIcon size={12} weight="fill" className="shrink-0" aria-hidden />
-                <span className="truncate">{place}</span>
-              </>
-            )}
+          {place ? (
+            <p className="flex min-w-0 items-center gap-1 text-sm font-semibold ink-primary">
+              <PlaceIcon size={13} weight="fill" className="shrink-0 text-brand-500" aria-hidden />
+              <span className="truncate">{place}</span>
+            </p>
+          ) : (
+            <p className="truncate text-sm font-semibold ink-primary">
+              {author?.name ?? "Alguien"}
+            </p>
+          )}
+          <p className="truncate text-xs ink-muted">
+            {place ? author?.name ?? "Alguien" : formatDate(moment.date, "long")}
           </p>
         </div>
 
@@ -137,24 +137,26 @@ export function MomentCard({
         )}
       </header>
 
-      {/* La foto, a sangre */}
-      <PhotoCarousel
-        photos={photos}
-        title={moment.title}
-        onOpen={(photo) => onOpenPhoto(photo, photos)}
-      />
+      {/* La foto sale del margen de la pagina en movil: de borde a borde, sin
+          marco que la encoja. A partir de `sm` vuelve dentro y se redondea, que
+          es donde el recorte a sangre dejaria de tener sentido. */}
+      <div className="-mx-5 mt-3 sm:mx-0 sm:overflow-hidden sm:rounded-lg">
+        <PhotoCarousel
+          photos={photos}
+          title={moment.title}
+          onOpen={(photo) => onOpenPhoto(photo, photos)}
+        />
+      </div>
 
-      {/* Acciones: comentar y compartir. Sin "me gusta". */}
-      <div className="flex items-center gap-1 px-2 pt-2">
+      {/* Acciones a la izquierda, valoracion a la derecha. Sin "me gusta". */}
+      <div className="mt-2 flex items-center gap-1">
         <button
           onClick={() => setCommentsOpen((v) => !v)}
           aria-expanded={commentsOpen}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm ink-secondary transition-colors hover:surface-2"
+          className="-ml-2 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm ink-secondary transition-colors hover:surface-2"
         >
-          <CommentIcon size={22} weight={commentsOpen ? "fill" : "regular"} aria-hidden />
-          {comments.length > 0 && (
-            <span className="tabular-nums">{comments.length}</span>
-          )}
+          <CommentIcon size={21} weight={commentsOpen ? "fill" : "regular"} aria-hidden />
+          {comments.length > 0 && <span className="tabular-nums">{comments.length}</span>}
           <span className="sr-only">
             {commentsOpen ? "Ocultar comentarios" : "Ver comentarios"}
           </span>
@@ -164,24 +166,37 @@ export function MomentCard({
           onClick={() => void share()}
           disabled={sharing}
           aria-label="Compartir momento"
-          className="rounded-lg px-2 py-2 ink-secondary transition-colors hover:surface-2 disabled:opacity-50"
+          className="rounded-lg px-2 py-1.5 ink-secondary transition-colors hover:surface-2 disabled:opacity-50"
         >
-          <ShareIcon size={22} aria-hidden />
+          <ShareIcon size={21} aria-hidden />
         </button>
+
+        {/* La valoracion, compacta: cinco estrellas doradas a tamano completo
+            eran lo mas ruidoso de la fila y le daban aire de juguete. Una
+            estrella y el numero dicen lo mismo sin gritar. */}
+        {moment.rating !== null && (
+          <span
+            className="ml-auto inline-flex items-center gap-1 text-sm ink-secondary"
+            aria-label={`Valoración: ${moment.rating} de 5`}
+          >
+            <StarIcon size={15} weight="fill" className="text-amber-400" aria-hidden />
+            <span className="tabular-nums">
+              {moment.rating}
+              <span className="ink-muted">/5</span>
+            </span>
+          </span>
+        )}
       </div>
 
-      {/* Texto */}
-      <div className="space-y-1.5 px-4 pb-1 pt-1">
-        <p className="text-sm leading-relaxed ink-primary">
-          <span className="font-semibold">{author?.name ?? "Alguien"}</span>{" "}
-          <span className="font-semibold">{moment.title}</span>
-        </p>
+      {/* Titulo y relato en lineas distintas. Antes se concatenaban con el
+          nombre del autor y se leia como una sola frase. */}
+      <div className="mt-1.5 space-y-1">
+        <h3 className="text-[0.95rem] font-semibold leading-snug ink-primary">{moment.title}</h3>
         {moment.description && (
           <p className="whitespace-pre-line text-sm leading-relaxed ink-secondary">
             {moment.description}
           </p>
         )}
-        {moment.rating !== null && <Rating value={moment.rating} readOnly />}
       </div>
 
       <MomentComments
