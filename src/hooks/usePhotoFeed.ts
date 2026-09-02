@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Photo } from "@/core/models";
-import { appendBatch, hasMore as hasMoreThan } from "@/core/photos/feed";
+import { appendBatch, hasMore as hasMoreThan } from "@/core/feed";
 import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { photosRepo } from "@/services/repositories";
@@ -142,10 +142,10 @@ export function usePhotoFeed(tripId: string, onlyGallery: boolean): PhotoFeed {
         pages.current += 1;
 
         // La fusion (sin repetidas, y con el total corregido si el lote viene
-        // vacio) vive en `core/photos/feed` para poder probarla sin navegador.
-        const next = appendBatch(loaded.current, { photos: signed, total: page.total });
-        loaded.current = next.photos;
-        setPhotos(next.photos);
+        // vacio) vive en `core/feed` para poder probarla sin navegador.
+        const next = appendBatch(loaded.current, { items: signed, total: page.total });
+        loaded.current = next.items;
+        setPhotos(next.items);
         setTotal(next.total);
       } catch (err) {
         if (mounted.current && ticket === request.current) setError(errorMessage(err));
