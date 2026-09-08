@@ -81,19 +81,24 @@ export function MomentComments({
       )}
 
       {visible.length > 0 && (
-        <ul className={open ? "mt-3 space-y-3" : "mt-1.5 space-y-1"}>
+        <ul className={open ? "mt-3 space-y-3" : "mt-2 space-y-2"}>
           {visible.map((comment) => {
             const profile = profileOf(comment.authorId);
             const mine = comment.authorId !== null && comment.authorId === currentUserId;
 
-            // Plegado: una linea por comentario, como un pie de foto.
+            // Plegado: una linea por comentario, como un pie de foto. Con la
+            // cara delante: un usuario en minusculas cuesta de reconocer de un
+            // vistazo, y la foto se lee antes que cualquier texto.
             if (!open) {
               return (
-                <li key={comment.id} className="truncate text-sm ink-secondary">
-                  <span className="font-semibold ink-primary">
-                    {quienHabla(comment.authorId)}
-                  </span>{" "}
-                  {comment.body}
+                <li key={comment.id} className="flex min-w-0 items-center gap-2 text-sm ink-secondary">
+                  <Avatar profile={profile} size="xs" className="shrink-0" />
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold ink-primary">
+                      {quienHabla(comment.authorId)}
+                    </span>{" "}
+                    {comment.body}
+                  </span>
                 </li>
               );
             }
