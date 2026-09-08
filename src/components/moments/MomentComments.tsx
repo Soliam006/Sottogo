@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MomentComment, TripMember } from "@/core/models";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Avatar } from "@/components/ui/Avatar";
@@ -43,6 +43,15 @@ export function MomentComments({
   const profileOf = (userId: string | null) =>
     members.find((m) => m.userId === userId)?.profile ?? null;
 
+  /*
+   * En los comentarios manda el usuario y no el nombre.
+   *
+   * Un nombre completo empuja el comentario a la linea de abajo, y encima se
+   * repetia con el `@usuario` de la fecha: tres datos para decir quien habla.
+   * El usuario es lo corto, lo unico y lo que se dicta para invitar a alguien.
+   */
+  const quienHabla = (userId: string | null) => profileOf(userId)?.username ?? "alguien";
+
   const hidden = Math.max(0, comments.length - PREVIEW);
   const visible = open ? comments : comments.slice(-PREVIEW);
 
@@ -82,7 +91,7 @@ export function MomentComments({
               return (
                 <li key={comment.id} className="truncate text-sm ink-secondary">
                   <span className="font-semibold ink-primary">
-                    {profile?.name ?? "Alguien"}
+                    {quienHabla(comment.authorId)}
                   </span>{" "}
                   {comment.body}
                 </li>
@@ -95,16 +104,18 @@ export function MomentComments({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug ink-secondary">
                     <span className="font-semibold ink-primary">
-                      {profile?.name ?? "Alguien"}
+                      {quienHabla(comment.authorId)}
                     </span>{" "}
                     <span className="whitespace-pre-line">{comment.body}</span>
                   </p>
-                  {/* El usuario va aqui y no pegado al nombre: en el hilo
-                      abierto hay sitio, y en el plegado cada comentario es una
-                      sola linea donde solo cabe quien habla y que dijo. */}
-                  <p className="mt-0.5 flex items-baseline gap-1.5 text-[11px] ink-muted">
-                    <span>{formatDate(comment.createdAt, "short")}</span>
-                    {profile && <span className="font-mono opacity-70">@{profile.username}</span>}
+                  {/* Cuanto hace, no el dia exacto: en un hilo lo que importa
+                      es si algo es de hace un rato o de hace meses. La fecha
+                      completa sigue ahi, al pasar el raton. */}
+                  <p
+                    className="mt-0.5 text-[11px] ink-muted"
+                    title={formatDate(comment.createdAt, "long")}
+                  >
+                    {formatRelativeTime(comment.createdAt)}
                   </p>
                 </div>
                 {mine && (
