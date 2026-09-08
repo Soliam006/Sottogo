@@ -6,11 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Field, TextInput } from "@/components/ui/Field";
+import { normalizeUsername, usernameProblem } from "@/core/identity/handle";
 import { errorMessage } from "@/lib/errors";
 
 /**
  * Autenticacion por email + contrasena (Supabase Auth).
- * El perfil publico (Nombre#Codigo) lo crea un trigger en la base de datos.
+ * El perfil publico lo crea un trigger en la base de datos: coge el nombre y el
+ * usuario de aqui y le pone el codigo de cuatro digitos que hace unico al par.
  */
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -18,6 +20,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const next = params.get("next") ?? "/trips";
 
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,6 +38,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       setError("Escribe tu nombre (mínimo 2 caracteres).");
       return;
     }
+    if (isRegister) {
+      const problem = usernameProblem(username);
+      if (problem) {
+        setError(problem);
+        return;
+      }
+    }
     if (password.length < 8) {
       setError("La contraseña debe tener al menos 8 caracteres.");
       return;
@@ -48,7 +58,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         const { data, error: signUpError } = await db.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { name: name.trim() } },
+          options: { data: { name: name.trim(), username } },
         });
         if (signUpError) throw signUpError;
 
@@ -105,7 +115,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             </h2>
             <p className="mt-1 text-sm ink-muted">
               {isRegister
-                ? "Te asignaremos un identificador único tipo Will#4821."
+                ? "Elige tu usuario. Te pondremos un número detrás para que sea único."
                 : "Entra para seguir con tus viajes."}
             </p>
           </div>
@@ -119,6 +129,29 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   placeholder="Will"
+                  required
+                />
+              )}
+            </Field>
+          )}
+
+          {isRegister && (
+            <Field
+              label="Usuario"
+              required
+              hint="Es lo que compartes para que te inviten a un viaje."
+            >
+              {(id) => (
+                <TextInput
+                  id={id}
+                  value={username}
+                  className="font-mono"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoComplete="username"
+                  placeholder="will"
+                  onChange={(e) => setUsername(normalizeUsername(e.target.value))}
                   required
                 />
               )}

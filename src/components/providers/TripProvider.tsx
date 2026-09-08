@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import type { Trip, TripMember, TripPlace, TripRole } from "@/core/models";
 import { canEdit, isVisitor } from "@/core/access";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
@@ -35,7 +35,7 @@ interface TripContextValue {
 const TripContext = createContext<TripContextValue | null>(null);
 
 export function TripProvider({ tripId, children }: { tripId: string; children: React.ReactNode }) {
-  const { session } = useSession();
+  const { session, profile } = useSession();
   const userId = session?.user?.id ?? null;
 
   const load = useCallback(async (): Promise<TripBundle> => {
@@ -53,6 +53,32 @@ export function TripProvider({ tripId, children }: { tripId: string; children: R
   useRealtimeTables(tripId, ["trip_members", "trip_places"], () => {
     void refresh();
   });
+
+  /*
+   * Al cambiarte el nombre o el usuario, vuelve a pedir los participantes.
+   *
+   * El nombre y el usuario de cada uno viajan DENTRO de `members`, no se leen
+   * del perfil de la sesion. Y cambiar de perfil no toca `trip_members`, asi
+   * que el realtime de arriba no se dispara con eso: la cabecera de tus
+   * momentos y tus comentarios se quedaban con el usuario viejo hasta que
+   * recargabas la pagina a mano. Este es el aviso que faltaba.
+   *
+   * Se compara la identidad y no el objeto: `refreshProfile` devuelve una fila
+   * nueva cada vez, asi que mirar la referencia recargaria el viaje sin motivo.
+   */
+  const identidad = profile && `${profile.name}|${profile.username}|${profile.uniqueCode}`;
+  const identidadPrevia = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!identidad) return;
+    // La primera identidad conocida no es un cambio: es el perfil llegando.
+    if (identidadPrevia.current === null || identidadPrevia.current === identidad) {
+      identidadPrevia.current = identidad;
+      return;
+    }
+    identidadPrevia.current = identidad;
+    void refresh();
+  }, [identidad, refresh]);
 
   const value = useMemo<TripContextValue>(() => {
     const members = data?.members ?? [];

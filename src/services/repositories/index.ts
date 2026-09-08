@@ -1,6 +1,7 @@
 export * from "./base";
 export { tripsRepo } from "./trips";
 export { invitationsRepo } from "./invitations";
+export { profilesRepo } from "./profiles";
 export { placesRepo } from "./places";
 export { expensesRepo } from "./expenses";
 export { photosRepo } from "./photos";

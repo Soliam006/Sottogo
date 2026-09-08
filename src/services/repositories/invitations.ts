@@ -11,15 +11,15 @@ const INVITATION_SELECT = `
 `;
 
 export const invitationsRepo = {
-  /** Busca un usuario por su identificador publico `Nombre#Codigo`. */
+  /** Busca un usuario por su identificador publico `username#0000`. */
   async findByHandle(db: Db, handle: string): Promise<PublicProfile | null> {
     const parsed = parseHandle(handle);
     if (!parsed) {
-      throw new RepositoryError("Formato no válido. Usa Nombre#0000 (por ejemplo Mei#7314).");
+      throw new RepositoryError("Formato no válido. Usa usuario#0000 (por ejemplo mei#7314).");
     }
 
     const result = await db.rpc("find_profile_by_handle", {
-      p_name: parsed.name,
+      p_username: parsed.username,
       p_code: parsed.code,
     });
 

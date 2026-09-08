@@ -77,6 +77,49 @@ export function formatDateTime(iso: string | null): string {
   }).format(date);
 }
 
+/**
+ * Tiempo transcurrido, corto: "ahora", "hace 5 min", "hace 3 h", "hace 4 d",
+ * "hace 2 sem", "hace 2 meses", "hace 1 año".
+ *
+ * Para los comentarios, donde importa **cuando de reciente** es algo y no el
+ * dia exacto. Un "08/09/2026" obliga a restar mentalmente; un "hace 3 h" se
+ * lee de un vistazo. La fecha completa sigue estando en el `title`.
+ *
+ * `now` se pasa a proposito: sin el, la funcion no se podria comprobar.
+ */
+export function formatRelativeTime(iso: string, now: Date = new Date()): string {
+  const date = parseISODate(iso);
+  if (!date) return "";
+
+  // Un comentario "del futuro" es desfase entre el reloj del movil y el del
+  // servidor, no un viaje en el tiempo: se ensena como recien puesto.
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (seconds < 60) return "ahora";
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `hace ${minutes} min`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `hace ${days} d`;
+
+  // Los meses se cuentan por calendario y no dividiendo entre 30: del 31 de
+  // enero al 1 de marzo hay un mes largo, no "hace 1 mes" justo.
+  const months =
+    (now.getFullYear() - date.getFullYear()) * 12 +
+    now.getMonth() -
+    date.getMonth() -
+    (now.getDate() < date.getDate() ? 1 : 0);
+
+  if (months < 1) return `hace ${Math.floor(days / 7)} sem`;
+  if (months < 12) return `hace ${months} ${months === 1 ? "mes" : "meses"}`;
+
+  const years = Math.floor(months / 12);
+  return `hace ${years} ${years === 1 ? "año" : "años"}`;
+}
+
 export function formatTime(time: string | null): string {
   if (!time) return "";
   return time.slice(0, 5);

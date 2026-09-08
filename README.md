@@ -77,7 +77,7 @@ src/
 │   ├── places/           PlacesProvider + Photon + Google  (intercambiables)
 │   ├── currency/         ExchangeRateProvider + Frankfurter
 │   ├── expenses/         Balance, liquidación y categorías (algoritmos puros)
-│   └── identity/         Parseo de `Nombre#Código`
+│   └── identity/         Parseo de `username#0000`
 │
 ├── services/             Infraestructura. Traduce el mundo exterior al dominio.
 │   ├── supabase/         Clientes (browser / server / middleware)
@@ -369,9 +369,14 @@ checklist_items`
 
 Puntos de diseño relevantes:
 
-- **Identidad pública `Nombre#Código`.** Un trigger sobre `auth.users` crea el perfil
-  y genera un código de 4 dígitos verificando que la pareja `(lower(name), code)` sea
-  única. La búsqueda usa `find_profile_by_handle()`, que solo expone campos públicos.
+- **Identidad pública `username#0000`.** El nombre se enseña y se puede cambiar; el
+  identificador para compartir va con el username, así no se mueve cuando alguien se
+  cambia el nombre. El username **no** es único por sí solo: lo único es la pareja
+  `(lower(username), code)`, y por eso nadie se queda sin el usuario que quiere. Un
+  trigger sobre `auth.users` crea el perfil y busca un código de 4 dígitos libre para
+  ese username. La búsqueda usa `find_profile_by_handle()`, que solo expone campos
+  públicos; el cambio de nombre y usuario va por `update_my_profile()`, que conserva el
+  código de siempre salvo que choque bajo el usuario nuevo.
 - **Gastos.** Se guarda `amount` + `currency` **y además** `converted_amount` +
   `exchange_rate` congelados en el alta. Los balances no dependen de que una API
   externa siga viva ni cambian retroactivamente si el cambio se mueve.
@@ -395,7 +400,7 @@ Puntos de diseño relevantes:
 
 Implementado y funcional de extremo a extremo:
 
-- Autenticación, perfil e identificador `Nombre#Código`
+- Autenticación, perfil editable e identificador `username#0000`
 - Creación de viajes, participantes, invitaciones con estados y notificaciones in-app
 - Mapa (modos **Lugares** y **📸 Fotos**), búsqueda de lugares reales, punto en el mapa
 - Lugares (quiero visitar / visitados, progreso, notas, valoración)

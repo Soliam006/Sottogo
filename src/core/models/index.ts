@@ -38,7 +38,7 @@ export interface UserProfile {
   createdAt: ISODateTime;
 }
 
-/** Identificador publico: `Nombre#Codigo` (ej. Will#4821). */
+/** El nombre se ensena; el identificador para compartir es `username#0000`. */
 export interface PublicProfile {
   id: UUID;
   name: string;
@@ -302,7 +302,13 @@ export interface JournalEntry {
   createdAt: ISODateTime;
 }
 
-/** `Nombre#Codigo` */
-export function formatHandle(p: Pick<PublicProfile, "name" | "uniqueCode">): string {
-  return `${p.name}#${p.uniqueCode}`;
+/**
+ * El identificador publico para compartir: `username#0000`.
+ *
+ * Va con el username y no con el nombre a proposito. El nombre se ensena y se
+ * puede cambiar; esto es lo que se dicta y se pega, y no debe moverse cuando
+ * alguien decide llamarse de otra forma.
+ */
+export function formatHandle(p: Pick<PublicProfile, "username" | "uniqueCode">): string {
+  return `${p.username}#${p.uniqueCode}`;
 }

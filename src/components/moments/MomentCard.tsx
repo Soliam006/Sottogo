@@ -51,6 +51,7 @@ export function MomentCard({
   const photos = moment.photos ?? [];
   const author: PublicProfile | null =
     members.find((m) => m.userId === moment.createdBy)?.profile ?? null;
+  const usuario = author ? `@${author.username}` : "@alguien";
 
   const { toast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -92,12 +93,21 @@ export function MomentCard({
               <span className="truncate">{place}</span>
             </p>
           ) : (
-            <p className="truncate text-sm font-semibold ink-primary">
-              {author?.name ?? "Alguien"}
+            <p className="truncate font-mono text-sm font-semibold ink-primary">
+              {usuario}
             </p>
           )}
+          {/* Solo el usuario, sin el nombre al lado. Los dos juntos decian dos
+              veces lo mismo y el nombre largo se comia la linea. Aqui lleva
+              arroba y en los comentarios no: ahi va pegado al texto y la
+              arroba seria ruido, pero suelto bajo el lugar hace falta algo que
+              diga "esto es quien lo subio" y no una parte de la direccion. */}
           <p className="truncate text-xs ink-muted">
-            {place ? author?.name ?? "Alguien" : formatDate(moment.date, "long")}
+            {place ? (
+              <span className="font-mono">{usuario}</span>
+            ) : (
+              formatDate(moment.date, "long")
+            )}
           </p>
         </div>
 
