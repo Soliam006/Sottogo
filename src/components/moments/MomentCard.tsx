@@ -96,8 +96,18 @@ export function MomentCard({
               {author?.name ?? "Alguien"}
             </p>
           )}
-          <p className="truncate text-xs ink-muted">
-            {place ? author?.name ?? "Alguien" : formatDate(moment.date, "long")}
+          {/* Entre companeros de viaje el nombre basta, pero el usuario es lo
+              que se dicta para invitar a alguien: verlo aqui ahorra tener que
+              ir a buscarlo a los ajustes del viaje. */}
+          <p className="flex min-w-0 items-baseline gap-1.5 text-xs ink-muted">
+            <span className="truncate">
+              {place ? author?.name ?? "Alguien" : formatDate(moment.date, "long")}
+            </span>
+            {author && (
+              <span className="shrink-0 font-mono text-[0.68rem] opacity-70">
+                @{author.username}
+              </span>
+            )}
           </p>
         </div>
 

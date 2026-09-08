@@ -99,8 +99,12 @@ export function MomentComments({
                     </span>{" "}
                     <span className="whitespace-pre-line">{comment.body}</span>
                   </p>
-                  <p className="mt-0.5 text-[11px] ink-muted">
-                    {formatDate(comment.createdAt, "short")}
+                  {/* El usuario va aqui y no pegado al nombre: en el hilo
+                      abierto hay sitio, y en el plegado cada comentario es una
+                      sola linea donde solo cabe quien habla y que dijo. */}
+                  <p className="mt-0.5 flex items-baseline gap-1.5 text-[11px] ink-muted">
+                    <span>{formatDate(comment.createdAt, "short")}</span>
+                    {profile && <span className="font-mono opacity-70">@{profile.username}</span>}
                   </p>
                 </div>
                 {mine && (

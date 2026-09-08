@@ -186,7 +186,7 @@ export function TripSettingsView() {
           <div className="mt-5 rounded-2xl surface-2 p-4">
             <p className="text-sm font-medium ink-primary">Añadir compañero</p>
             <p className="mt-0.5 text-xs ink-muted">
-              Busca por su identificador público, con el formato Nombre#0000.
+              Busca por su identificador público, con el formato usuario#0000.
             </p>
 
             <form
@@ -199,7 +199,7 @@ export function TripSettingsView() {
               <TextInput
                 value={handle}
                 onChange={(e) => setHandle(e.target.value)}
-                placeholder="Mei#7314"
+                placeholder="mei#7314"
                 className="font-mono"
               />
               <Button type="submit" loading={searching} variant="secondary">
