@@ -7,12 +7,14 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Avatar } from "@/components/ui/Avatar";
+import { ProfileModal } from "./ProfileModal";
 
 export function UserMenu() {
   const { profile, signOut } = useSession();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -56,11 +58,21 @@ export function UserMenu() {
                 );
               }}
               className="mt-0.5 font-mono text-xs text-brand-600 hover:underline"
-              title="Copiar identificador"
+              title="Copiar tu identificador para compartir"
             >
               {handle}
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              setEditing(true);
+              setOpen(false);
+            }}
+            className="w-full border-b border-subtle px-4 py-3 text-left text-sm font-medium ink-secondary transition-colors hover:surface-2"
+          >
+            Editar perfil
+          </button>
 
           <div className="px-4 py-3">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide ink-muted">Tema</p>
@@ -88,6 +100,8 @@ export function UserMenu() {
           </button>
         </div>
       )}
+
+      {editing && <ProfileModal open onClose={() => setEditing(false)} />}
     </div>
   );
 }

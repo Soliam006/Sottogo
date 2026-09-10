@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { MomentComment, TripMember } from "@/core/models";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatRelativeTime } from "@/lib/format";
 import { errorMessage } from "@/lib/errors";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Avatar } from "@/components/ui/Avatar";
@@ -43,6 +43,15 @@ export function MomentComments({
   const profileOf = (userId: string | null) =>
     members.find((m) => m.userId === userId)?.profile ?? null;
 
+  /*
+   * En los comentarios manda el usuario y no el nombre.
+   *
+   * Un nombre completo empuja el comentario a la linea de abajo, y encima se
+   * repetia con el `@usuario` de la fecha: tres datos para decir quien habla.
+   * El usuario es lo corto, lo unico y lo que se dicta para invitar a alguien.
+   */
+  const quienHabla = (userId: string | null) => profileOf(userId)?.username ?? "alguien";
+
   const hidden = Math.max(0, comments.length - PREVIEW);
   const visible = open ? comments : comments.slice(-PREVIEW);
 
@@ -72,19 +81,24 @@ export function MomentComments({
       )}
 
       {visible.length > 0 && (
-        <ul className={open ? "mt-3 space-y-3" : "mt-1.5 space-y-1"}>
+        <ul className={open ? "mt-3 space-y-3" : "mt-2 space-y-2"}>
           {visible.map((comment) => {
             const profile = profileOf(comment.authorId);
             const mine = comment.authorId !== null && comment.authorId === currentUserId;
 
-            // Plegado: una linea por comentario, como un pie de foto.
+            // Plegado: una linea por comentario, como un pie de foto. Con la
+            // cara delante: un usuario en minusculas cuesta de reconocer de un
+            // vistazo, y la foto se lee antes que cualquier texto.
             if (!open) {
               return (
-                <li key={comment.id} className="truncate text-sm ink-secondary">
-                  <span className="font-semibold ink-primary">
-                    {profile?.name ?? "Alguien"}
-                  </span>{" "}
-                  {comment.body}
+                <li key={comment.id} className="flex min-w-0 items-center gap-2 text-sm ink-secondary">
+                  <Avatar profile={profile} size="xs" className="shrink-0" />
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold ink-primary">
+                      {quienHabla(comment.authorId)}
+                    </span>{" "}
+                    {comment.body}
+                  </span>
                 </li>
               );
             }
@@ -95,12 +109,18 @@ export function MomentComments({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug ink-secondary">
                     <span className="font-semibold ink-primary">
-                      {profile?.name ?? "Alguien"}
+                      {quienHabla(comment.authorId)}
                     </span>{" "}
                     <span className="whitespace-pre-line">{comment.body}</span>
                   </p>
-                  <p className="mt-0.5 text-[11px] ink-muted">
-                    {formatDate(comment.createdAt, "short")}
+                  {/* Cuanto hace, no el dia exacto: en un hilo lo que importa
+                      es si algo es de hace un rato o de hace meses. La fecha
+                      completa sigue ahi, al pasar el raton. */}
+                  <p
+                    className="mt-0.5 text-[11px] ink-muted"
+                    title={formatDate(comment.createdAt, "long")}
+                  >
+                    {formatRelativeTime(comment.createdAt)}
                   </p>
                 </div>
                 {mine && (

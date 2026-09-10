@@ -21,24 +21,44 @@ exception when duplicate_object then null; end $$;
 
 -- ---------------------------------------------------------------------------
 -- PROFILES  (extiende auth.users)
---   identificador publico = name#unique_code  (ej. Will#4821)
+--   identificador publico = username#unique_code  (ej. will#4821)
 -- ---------------------------------------------------------------------------
 create table if not exists public.profiles (
   id           uuid primary key references auth.users(id) on delete cascade,
   name         text not null check (char_length(trim(name)) between 2 and 32),
-  username     text not null unique check (username ~ '^[a-z0-9_.]{3,24}$'),
+  -- El username NO es unico por si solo: lo unico es el par con el codigo.
+  -- Por eso existe el #0000 y por eso nadie se queda sin el usuario que quiere.
+  username     text not null check (username ~ '^[a-z0-9_.]{3,24}$'),
   unique_code  text not null check (unique_code ~ '^[0-9]{4}$'),
   email        text,
   avatar_url   text,
   created_at   timestamptz not null default now()
 );
 
--- Garantiza que la combinacion Nombre#Codigo sea unica (case-insensitive).
-create unique index if not exists profiles_handle_unique
-  on public.profiles (lower(name), unique_code);
+-- ---------------------------------------------------------------------------
+-- MIGRACION NO DESTRUCTIVA del identificador `Nombre#Codigo` a `username#0000`.
+--
+-- El nombre hacia dos trabajos: se ensenaba y era la mitad del identificador.
+-- Nadie podia poner su nombre completo sin acabar con un `Maria Jose#7314`, y
+-- al cambiarse el nombre cambiaba el identificador con el.
+--
+-- Ninguna fila se toca. Solo se mueven las restricciones:
+--   - cae el unico global de `username`, que dejaba el #0000 de adorno;
+--   - el par pasa a ser (username, codigo) en vez de (nombre, codigo).
+--
+-- El paso es seguro en este orden: mientras `username` fue unico global, todo
+-- par (username, codigo) ya era unico, asi que el indice nuevo construye sin
+-- chocar. Si fallara aqui es que hay usuarios repetidos, y eso hay que verlo.
+-- ---------------------------------------------------------------------------
+alter table public.profiles drop constraint if exists profiles_username_key;
 
--- Busqueda por nombre
+drop index if exists public.profiles_handle_unique;
+create unique index if not exists profiles_handle_unique
+  on public.profiles (lower(username), unique_code);
+
+-- Busqueda por nombre (la lista de participantes) y por usuario (compartir).
 create index if not exists profiles_name_idx on public.profiles (lower(name));
+create index if not exists profiles_username_idx on public.profiles (lower(username));
 
 -- ---------------------------------------------------------------------------
 -- TRIPS
@@ -471,8 +491,12 @@ end $$;
 --  FUNCIONES
 -- ===========================================================================
 
--- Genera un codigo de 4 digitos libre para un nombre dado (Nombre#Codigo unico)
-create or replace function public.generate_unique_code(p_name text)
+-- Genera un codigo de 4 digitos libre para un usuario dado (username#0000 unico).
+--
+-- Va con DROP y no con CREATE OR REPLACE porque cambia el nombre del parametro,
+-- y Postgres no deja renombrar parametros al reemplazar una funcion.
+drop function if exists public.generate_unique_code(text);
+create function public.generate_unique_code(p_username text)
 returns text
 language plpgsql
 security definer
@@ -486,11 +510,13 @@ begin
     v_code := lpad((floor(random() * 9000) + 1000)::int::text, 4, '0');
     exit when not exists (
       select 1 from public.profiles
-      where lower(name) = lower(p_name) and unique_code = v_code
+      where lower(username) = lower(p_username) and unique_code = v_code
     );
     v_try := v_try + 1;
+    -- 9000 codigos por usuario: llegar aqui significa que ese usuario esta
+    -- practicamente agotado, no que hayamos tenido mala suerte.
     if v_try > 200 then
-      raise exception 'No se pudo generar un codigo unico para el nombre %', p_name;
+      raise exception 'No se pudo generar un codigo unico para el usuario %', p_username;
     end if;
   end loop;
   return v_code;
@@ -508,25 +534,27 @@ declare
   v_name     text;
   v_username text;
   v_base     text;
-  v_suffix   int := 0;
 begin
   v_name := coalesce(nullif(trim(new.raw_user_meta_data ->> 'name'), ''),
                      split_part(new.email, '@', 1));
   v_name := left(v_name, 32);
 
-  v_base := lower(regexp_replace(coalesce(new.raw_user_meta_data ->> 'username', v_name),
-                                 '[^a-zA-Z0-9_.]', '', 'g'));
-  v_base := left(coalesce(nullif(v_base, ''), 'user'), 20);
+  -- Los acentos se pasan a su letra base antes de filtrar. Antes no: el filtro
+  -- se comia la letra entera, y de "Niño" salia "nio".
+  v_base := lower(regexp_replace(
+              translate(coalesce(new.raw_user_meta_data ->> 'username', v_name),
+                        'áàäâãéèëêíìïîóòöôõúùüûñçÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ',
+                        'aaaaaeeeeiiiiooooouuuuncAAAAAEEEEIIIIOOOOOUUUUNC'),
+              '[^a-zA-Z0-9_.]', '', 'g'));
+  v_base := left(coalesce(nullif(v_base, ''), 'user'), 24);
   if char_length(v_base) < 3 then v_base := v_base || 'usr'; end if;
 
+  -- Ya no se busca un username libre: el username se respeta tal cual y es el
+  -- codigo el que lo hace unico. Es justo para lo que existe el #0000.
   v_username := v_base;
-  while exists (select 1 from public.profiles where username = v_username) loop
-    v_suffix   := v_suffix + 1;
-    v_username := left(v_base, 20) || v_suffix::text;
-  end loop;
 
   insert into public.profiles (id, name, username, unique_code, email, avatar_url)
-  values (new.id, v_name, v_username, public.generate_unique_code(v_name),
+  values (new.id, v_name, v_username, public.generate_unique_code(v_username),
           new.email, new.raw_user_meta_data ->> 'avatar_url');
   return new;
 end;
@@ -637,8 +665,13 @@ create trigger on_trip_created
   after insert on public.trips
   for each row execute function public.handle_new_trip();
 
--- Busqueda publica por Nombre#Codigo (expone solo campos publicos)
-create or replace function public.find_profile_by_handle(p_name text, p_code text)
+-- Busca a alguien por su identificador publico `username#0000`.
+--
+-- Sigue siendo SECURITY DEFINER: para invitar a alguien hay que poder
+-- encontrarlo, y la politica de `profiles` solo deja ver a quien ya comparte
+-- viaje contigo. Devuelve lo justo para ensenar la ficha, nunca el correo.
+drop function if exists public.find_profile_by_handle(text, text);
+create function public.find_profile_by_handle(p_username text, p_code text)
 returns table (id uuid, name text, username text, unique_code text, avatar_url text)
 language sql
 security definer
@@ -647,8 +680,63 @@ set search_path = public
 as $$
   select p.id, p.name, p.username, p.unique_code, p.avatar_url
   from public.profiles p
-  where lower(p.name) = lower(trim(p_name)) and p.unique_code = trim(p_code)
+  where lower(p.username) = lower(trim(p_username)) and p.unique_code = trim(p_code)
   limit 1;
+$$;
+
+-- Cambiar el nombre y el usuario propios.
+--
+-- Va por funcion y no por un UPDATE directo aunque la politica lo permita,
+-- porque hay una decision que el cliente no puede tomar solo: al cambiar de
+-- usuario, el codigo de siempre puede estar cogido bajo el usuario nuevo. Se
+-- conserva si esta libre (es el que la gente ya tiene apuntado) y solo se
+-- cambia cuando choca. Asi nadie se queda sin el usuario que quiere.
+--
+-- SECURITY DEFINER por `generate_unique_code`, que necesita mirar perfiles
+-- ajenos para saber que codigos estan cogidos. Solo actua sobre auth.uid().
+create or replace function public.update_my_profile(p_name text, p_username text)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_name     text := trim(p_name);
+  v_username text := lower(trim(p_username));
+  v_current  public.profiles;
+  v_code     text;
+begin
+  select * into v_current from public.profiles where id = auth.uid();
+  if v_current.id is null then
+    raise exception 'No hay perfil para el usuario actual';
+  end if;
+
+  if char_length(v_name) < 2 or char_length(v_name) > 32 then
+    raise exception 'El nombre debe tener entre 2 y 32 caracteres';
+  end if;
+  if v_username !~ '^[a-z0-9_.]{3,24}$' then
+    raise exception 'El usuario admite de 3 a 24 caracteres: minusculas, numeros, guion bajo y punto';
+  end if;
+
+  v_code := v_current.unique_code;
+  if v_username <> v_current.username
+     and exists (
+       select 1 from public.profiles
+        where lower(username) = v_username
+          and unique_code = v_code
+          and id <> v_current.id
+     )
+  then
+    v_code := public.generate_unique_code(v_username);
+  end if;
+
+  update public.profiles
+     set name = v_name, username = v_username, unique_code = v_code
+   where id = v_current.id
+  returning * into v_current;
+
+  return v_current;
+end;
 $$;
 
 -- Aceptar / rechazar invitacion de forma atomica y segura
