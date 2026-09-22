@@ -8,6 +8,8 @@ import { errorMessage } from "@/lib/errors";
 import { getSupabaseBrowserClient } from "@/services/supabase/client";
 import { photosRepo } from "@/services/repositories";
 import { uploadPhotoFile } from "@/services/storage/photoStorage";
+import { placeFiles, type PlacedFile } from "@/services/photos/placeFiles";
+import { PhotoPlacementList } from "./PhotoPlacementList";
 import {
   createRelatedContent,
   type RelatedContext,
@@ -48,11 +50,14 @@ export function UploadPhotoModal({
   onUploaded: (photos: Photo[]) => void;
   defaultTripPlace?: TripPlace | null;
 }) {
-  const { trip } = useTrip();
+  const { trip, tripPlaces } = useTrip();
   const { session } = useSession();
   const { toast } = useToast();
 
   const [files, setFiles] = useState<File[]>([]);
+  /** Lo que la propia foto sabe de si misma. Mismo orden que `files`. */
+  const [placed, setPlaced] = useState<PlacedFile[]>([]);
+  const [locating, setLocating] = useState(false);
   const [description, setDescription] = useState("");
   const [tripPlace, setTripPlace] = useState<TripPlace | null>(defaultTripPlace);
   const [location, setLocation] = useState<MemoryLocation | null>(null);
@@ -86,13 +91,52 @@ export function UploadPhotoModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // La fecha del archivo se propone al momento/gasto relacionados.
-  const shotDate = files[0]?.lastModified
-    ? new Date(files[0].lastModified).toISOString().slice(0, 10)
-    : undefined;
+  // La fecha se propone al momento/gasto relacionados. La del EXIF manda sobre
+  // la del archivo: `lastModified` es cuando se copio, no cuando se disparo.
+  const shotDate =
+    placed[0]?.takenAt?.slice(0, 10) ??
+    (files[0]?.lastModified
+      ? new Date(files[0].lastModified).toISOString().slice(0, 10)
+      : undefined);
+
+  /** Fotos que no traen ubicacion propia: son las que hereda lo de abajo. */
+  const sinUbicacion = files.length - placed.filter((p) => p.location).length;
+
+  /**
+   * Al elegir archivos se lee su EXIF y se coloca cada uno.
+   *
+   * Es lo que evita el trabajo manual que habia hasta ahora: buscar a que sitio
+   * pertenece cada foto y despues su punto exacto, una por una.
+   */
+  async function chooseFiles(list: File[]) {
+    setFiles(list);
+    setPlaced([]);
+    if (!list.length || !trip) return;
+
+    setLocating(true);
+    try {
+      setPlaced(await placeFiles(list, trip, tripPlaces));
+    } catch {
+      // Colocar solas es una comodidad, no un requisito: si falla, quedan los
+      // campos de abajo y se sube exactamente igual que antes.
+      setPlaced([]);
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  /** Acepta el lugar propuesto para una foto concreta. */
+  function acceptSuggestion(index: number) {
+    setPlaced((previo) =>
+      previo.map((p, i) =>
+        i === index ? { ...p, tripPlaceId: p.suggestedTripPlaceId, suggestedTripPlaceId: null } : p,
+      ),
+    );
+  }
 
   function reset() {
     setFiles([]);
+    setPlaced([]);
     setDescription("");
     setTripPlace(null);
     setLocation(null);
@@ -114,15 +158,24 @@ export function UploadPhotoModal({
     try {
       const db = getSupabaseBrowserClient();
       for (const [index, file] of files.entries()) {
-        const upload = await uploadPhotoFile(db, trip.id, file);
+        // Lo que la foto sabe de si misma manda sobre lo que se eligio a mano:
+        // el EXIF es de donde se disparo, los campos de abajo valen para todo
+        // el lote y son mas gruesos por definicion.
+        const propio = placed[index];
+        const exacta = propio?.location ?? location;
+        const lugar = propio?.tripPlaceId ?? tripPlace?.id ?? null;
+
+        const upload = await uploadPhotoFile(db, trip.id, file, {
+          takenAt: propio?.takenAt ?? null,
+        });
         const photo = await photosRepo.create(db, trip.id, session.user.id, upload, {
           description: description.trim() || null,
-          tripPlaceId: tripPlace?.id ?? null,
+          tripPlaceId: lugar,
           // La ubicacion exacta manda; si no la hay, se hereda la del lugar.
-          latitude: location?.latitude ?? tripPlace?.place.latitude ?? null,
-          longitude: location?.longitude ?? tripPlace?.place.longitude ?? null,
-          locationName: location?.name ?? null,
-          placeId: location?.placeId ?? null,
+          latitude: exacta?.latitude ?? tripPlace?.place.latitude ?? null,
+          longitude: exacta?.longitude ?? tripPlace?.place.longitude ?? null,
+          locationName: exacta?.name ?? null,
+          placeId: exacta?.placeId ?? null,
           inGallery: true,
         });
         uploaded.push(photo);
@@ -180,17 +233,20 @@ export function UploadPhotoModal({
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+                onChange={(e) => void chooseFiles(Array.from(e.target.files ?? []))}
                 className="block w-full text-sm ink-secondary file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-700 dark:file:bg-brand-900/40 dark:file:text-brand-200"
               />
             )}
           </Field>
 
           {files.length > 0 && (
-            <p className="text-sm ink-muted">
-              {files.length} archivo{files.length === 1 ? "" : "s"} seleccionado
-              {files.length === 1 ? "" : "s"}.
-            </p>
+            <PhotoPlacementList
+              files={files}
+              placed={placed}
+              tripPlaces={tripPlaces}
+              locating={locating}
+              onAccept={acceptSuggestion}
+            />
           )}
 
           <div className="space-y-1.5">
@@ -215,7 +271,9 @@ export function UploadPhotoModal({
               )}
             </div>
             <p className="text-xs ink-muted">
-              Contexto general del viaje. La ubicación exacta va debajo.
+              {sinUbicacion > 0
+                ? `Se aplicará a ${sinUbicacion === files.length ? "las fotos" : `las ${sinUbicacion} fotos`} que no traigan su propio lugar.`
+                : "Contexto general del viaje. La ubicación exacta va debajo."}
             </p>
           </div>
 
@@ -224,7 +282,11 @@ export function UploadPhotoModal({
             onChange={setLocation}
             tripPlace={tripPlace}
             onPickTripPlace={setTripPlace}
-            hint="Dónde se tomó exactamente. Es lo que la sitúa en el mapa de recuerdos."
+            hint={
+              sinUbicacion > 0
+                ? "Para las fotos que no traen ubicación propia. Es lo que las sitúa en el mapa de recuerdos."
+                : "Dónde se tomó exactamente. Tus fotos ya traen la suya."
+            }
           />
 
           <Field label="Descripción (opcional)">

@@ -11,8 +11,16 @@
 import type { UUID } from "@/core/models";
 import type { LatLng } from "./geo";
 
-/** De donde salio la ubicacion. `saved` = ya estaba guardada en el viaje. */
-export type LocationSource = "current" | "search" | "map" | "saved";
+/**
+ * De donde salio la ubicacion.
+ *
+ *   `exif`    la traia la propia foto. Es la unica que no pidio nadie.
+ *   `current` del GPS del movil, en el momento de subirla.
+ *   `search`  de una busqueda de lugares reales.
+ *   `map`     de un punto marcado a mano en el mapa.
+ *   `saved`   ya estaba guardada en el viaje.
+ */
+export type LocationSource = "exif" | "current" | "search" | "map" | "saved";
 
 export interface MemoryLocation extends LatLng {
   name: string | null;
