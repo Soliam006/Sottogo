@@ -10,14 +10,21 @@ import {
   type PhotoPlacement,
 } from "@/core/photos/placement";
 import { reverseGeocode } from "@/services/api/places";
+import { currentLocation } from "@/services/map/currentLocation";
+import { todayISO } from "@/lib/format";
 
 /**
  * Coloca sola cada foto que se va a subir: donde se hizo y a que lugar del
  * viaje pertenece.
  *
- * Es el pegamento entre tres piezas que ya existian por separado: el EXIF del
- * archivo, `placePhoto` —que decide con las reglas de radio y de privacidad— y
- * la geocodificacion inversa, que pone nombre al punto.
+ * Es el pegamento entre cuatro piezas: el EXIF del archivo, la ubicacion del
+ * usuario ahora mismo, `placePhoto` —que decide con las reglas de radio y de
+ * privacidad— y la geocodificacion inversa, que pone nombre al punto.
+ *
+ * La ubicacion de ahora solo se pide **si alguna foto la necesita**. En Android
+ * la necesitan casi todas, porque el selector de fotos borra el GPS antes de
+ * entregar el archivo; en un iPhone o entrando por el explorador, ninguna, y
+ * entonces no se molesta al usuario con el permiso.
  *
  * Nada de esto puede impedir subir una foto. Si el EXIF no esta, si la red
  * falla o si el proveedor de lugares no contesta, la foto sube igual y el
@@ -37,6 +44,8 @@ export interface PlacedFile {
   file: File;
   /** Fecha real de disparo. Mejor que `lastModified`, que es cuando se copio. */
   takenAt: string | null;
+  /** De donde salio la ubicacion: de la foto, o de donde estabas al subirla. */
+  from: "exif" | "current" | null;
   /** Ubicacion exacta lista para guardar, con nombre si se pudo averiguar. */
   location: MemoryLocation | null;
   /** Lugar del viaje asignado solo: estaba lo bastante cerca. */
@@ -54,11 +63,17 @@ export interface PlacementTrip {
   endDate: string;
 }
 
+export interface PlaceFilesResult {
+  placed: PlacedFile[];
+  /** Por que no se pudo usar la ubicacion de ahora, si hizo falta y fallo. */
+  locationError: string | null;
+}
+
 export async function placeFiles(
   files: readonly File[],
   trip: PlacementTrip,
   tripPlaces: readonly TripPlace[],
-): Promise<PlacedFile[]> {
+): Promise<PlaceFilesResult> {
   const candidatos = tripPlaces.map((tp) => ({
     id: tp.id,
     latitude: tp.place.latitude,
@@ -66,6 +81,14 @@ export async function placeFiles(
   }));
 
   const exifs = await Promise.all(files.map(readExifFromFile));
+
+  // Solo se pide la ubicacion si alguna foto se va a quedar sin ella. Con
+  // fotos que ya traen GPS no hay motivo para encender nada.
+  const algunaSinGps = exifs.some(
+    (exif) => exif.latitude === null || exif.longitude === null,
+  );
+  const ahora = algunaSinGps ? await currentLocation() : { location: null, error: null };
+  const hoy = todayISO();
 
   const decisiones: PhotoPlacement[] = exifs.map((exif) =>
     placePhoto({
@@ -75,20 +98,32 @@ export async function placeFiles(
       tripStart: trip.startDate,
       tripEnd: trip.endDate,
       places: candidatos,
+      current: ahora.location,
+      today: hoy,
     }),
   );
 
-  const nombres = await nombresPorGrupo(decisiones.map((d) => d.coords));
+  // La ubicacion de ahora ya trae su nombre resuelto: no se vuelve a preguntar
+  // por ella. Solo se geocodifican las que salieron del EXIF.
+  const nombres = await nombresPorGrupo(
+    decisiones.map((d) => (d.from === "exif" ? d.coords : null)),
+  );
 
-  return files.map((file, index) => {
+  const placed = files.map((file, index) => {
     const decision = decisiones[index];
     const coords = decision.coords;
 
     return {
       file,
       takenAt: exifs[index].takenAt,
+      from: decision.from,
       location: coords
-        ? { ...coords, name: nombres[index], placeId: null, source: "exif" }
+        ? {
+            ...coords,
+            name: decision.from === "current" ? ahora.location?.name ?? null : nombres[index],
+            placeId: null,
+            source: decision.from === "current" ? ("current" as const) : ("exif" as const),
+          }
         : null,
       tripPlaceId: decision.placeId,
       suggestedTripPlaceId: decision.suggestedPlaceId,
@@ -96,6 +131,8 @@ export async function placeFiles(
       reason: decision.reason,
     };
   });
+
+  return { placed, locationError: algunaSinGps ? ahora.error : null };
 }
 
 /** El EXIF de un archivo, leyendo solo su cabecera. */

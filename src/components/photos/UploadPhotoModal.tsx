@@ -55,9 +55,11 @@ export function UploadPhotoModal({
   const { toast } = useToast();
 
   const [files, setFiles] = useState<File[]>([]);
-  /** Lo que la propia foto sabe de si misma. Mismo orden que `files`. */
+  /** Donde va cada foto, ya resuelto. Mismo orden que `files`. */
   const [placed, setPlaced] = useState<PlacedFile[]>([]);
   const [locating, setLocating] = useState(false);
+  /** Si hizo falta la ubicacion del momento y no se pudo tener. */
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [tripPlace, setTripPlace] = useState<TripPlace | null>(defaultTripPlace);
   const [location, setLocation] = useState<MemoryLocation | null>(null);
@@ -103,7 +105,8 @@ export function UploadPhotoModal({
   const sinUbicacion = files.length - placed.filter((p) => p.location).length;
 
   /**
-   * Al elegir archivos se lee su EXIF y se coloca cada uno.
+   * Al elegir archivos se coloca cada uno: con el GPS de la foto si lo trae y,
+   * si no, con la ubicacion del usuario en ese momento.
    *
    * Es lo que evita el trabajo manual que habia hasta ahora: buscar a que sitio
    * pertenece cada foto y despues su punto exacto, una por una.
@@ -111,11 +114,14 @@ export function UploadPhotoModal({
   async function chooseFiles(list: File[]) {
     setFiles(list);
     setPlaced([]);
+    setLocationError(null);
     if (!list.length || !trip) return;
 
     setLocating(true);
     try {
-      setPlaced(await placeFiles(list, trip, tripPlaces));
+      const resultado = await placeFiles(list, trip, tripPlaces);
+      setPlaced(resultado.placed);
+      setLocationError(resultado.locationError);
     } catch {
       // Colocar solas es una comodidad, no un requisito: si falla, quedan los
       // campos de abajo y se sube exactamente igual que antes.
@@ -226,7 +232,11 @@ export function UploadPhotoModal({
         }
       >
         <div className="space-y-5">
-          <Field label="Imágenes" required hint="Puedes seleccionar varias a la vez. Máximo 15 MB por foto.">
+          <Field
+            label="Imágenes"
+            required
+            hint="Puedes seleccionar varias a la vez. Máximo 15 MB por foto. Si la foto no trae ubicación, Voyago usa dónde estás para colocarla."
+          >
             {(id) => (
               <input
                 id={id}
@@ -245,6 +255,7 @@ export function UploadPhotoModal({
               placed={placed}
               tripPlaces={tripPlaces}
               locating={locating}
+              locationError={locationError}
               onAccept={acceptSuggestion}
             />
           )}
