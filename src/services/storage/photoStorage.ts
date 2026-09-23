@@ -57,6 +57,7 @@ export async function uploadPhotoFile(
   db: SupabaseClient,
   tripId: UUID,
   file: File,
+  options: { takenAt?: string | null } = {},
 ): Promise<PreparedUpload> {
   if (!file.type.startsWith("image/")) {
     throw new PhotoStorageError("El archivo debe ser una imagen.");
@@ -107,7 +108,12 @@ export async function uploadPhotoFile(
       // eligio el usuario: describen lo que se va a servir.
       width: display.width,
       height: display.height,
-      takenAt: file.lastModified ? new Date(file.lastModified).toISOString() : null,
+      // La del EXIF manda: `lastModified` es cuando se copio el archivo al
+      // movil, no cuando se disparo. Por eso la galeria agrupaba por dias que
+      // no eran, sobre todo con fotos pasadas por mensajeria.
+      takenAt:
+        options.takenAt ??
+        (file.lastModified ? new Date(file.lastModified).toISOString() : null),
     };
   } finally {
     // Una tanda de 20 fotos dejaria 20 bitmaps descomprimidos en memoria.
