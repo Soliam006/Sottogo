@@ -35,9 +35,15 @@ import { RelatedContentSection } from "@/components/content/RelatedContentSectio
 const PHOTO_RELATED: readonly RelatedTarget[] = ["moment", "expense"];
 
 /**
- * Subida de fotos. La ubicacion puede venir de un lugar del viaje, de una
- * busqueda real o de un punto del mapa: en los tres casos la foto queda
- * geolocalizada y aparece en el mapa de recuerdos del viaje.
+ * Subida de fotos.
+ *
+ * La ubicacion **no se rellena**: se genera al elegir las imagenes. Sale del
+ * GPS de la foto si lo trae y, si no, de donde este el usuario en ese momento.
+ * El selector a mano solo aparece cuando ninguna de las dos ha funcionado.
+ *
+ * El LUGAR del viaje si se elige, porque es una decision distinta: no es donde
+ * se disparo la foto, sino a que parte del viaje pertenece. Se propone solo,
+ * pero se puede cambiar.
  */
 export function UploadPhotoModal({
   open,
@@ -55,9 +61,11 @@ export function UploadPhotoModal({
   const { toast } = useToast();
 
   const [files, setFiles] = useState<File[]>([]);
-  /** Lo que la propia foto sabe de si misma. Mismo orden que `files`. */
+  /** Donde va cada foto, ya resuelto. Mismo orden que `files`. */
   const [placed, setPlaced] = useState<PlacedFile[]>([]);
   const [locating, setLocating] = useState(false);
+  /** Si hizo falta la ubicacion del momento y no se pudo tener. */
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [tripPlace, setTripPlace] = useState<TripPlace | null>(defaultTripPlace);
   const [location, setLocation] = useState<MemoryLocation | null>(null);
@@ -99,11 +107,21 @@ export function UploadPhotoModal({
       ? new Date(files[0].lastModified).toISOString().slice(0, 10)
       : undefined);
 
-  /** Fotos que no traen ubicacion propia: son las que hereda lo de abajo. */
+  /** Fotos que se han quedado sin ubicacion, ni de la foto ni del momento. */
   const sinUbicacion = files.length - placed.filter((p) => p.location).length;
 
   /**
-   * Al elegir archivos se lee su EXIF y se coloca cada uno.
+   * Si hay que ensenar el selector de ubicacion a mano.
+   *
+   * Cuando todo va bien no se ensena: la ubicacion se genera sola y no hay nada
+   * que rellenar. Aparece solo si alguna foto se ha quedado sin ella, que es
+   * justo cuando el usuario necesita poder arreglarlo.
+   */
+  const necesitaManual = files.length > 0 && !locating && sinUbicacion > 0;
+
+  /**
+   * Al elegir archivos se coloca cada uno: con el GPS de la foto si lo trae y,
+   * si no, con la ubicacion del usuario en ese momento.
    *
    * Es lo que evita el trabajo manual que habia hasta ahora: buscar a que sitio
    * pertenece cada foto y despues su punto exacto, una por una.
@@ -111,11 +129,14 @@ export function UploadPhotoModal({
   async function chooseFiles(list: File[]) {
     setFiles(list);
     setPlaced([]);
+    setLocationError(null);
     if (!list.length || !trip) return;
 
     setLocating(true);
     try {
-      setPlaced(await placeFiles(list, trip, tripPlaces));
+      const resultado = await placeFiles(list, trip, tripPlaces);
+      setPlaced(resultado.placed);
+      setLocationError(resultado.locationError);
     } catch {
       // Colocar solas es una comodidad, no un requisito: si falla, quedan los
       // campos de abajo y se sube exactamente igual que antes.
@@ -137,6 +158,7 @@ export function UploadPhotoModal({
   function reset() {
     setFiles([]);
     setPlaced([]);
+    setLocationError(null);
     setDescription("");
     setTripPlace(null);
     setLocation(null);
@@ -219,14 +241,28 @@ export function UploadPhotoModal({
             <Button variant="secondary" onClick={onClose} disabled={Boolean(progress)}>
               Cancelar
             </Button>
-            <Button onClick={() => void submit()} loading={Boolean(progress)}>
-              {progress ? `Subiendo ${progress.done}/${progress.total}…` : "Subir"}
+            {/* Subir mientras se busca la ubicacion guardaria las fotos sin
+                ella: la respuesta del GPS llega despues. */}
+            <Button
+              onClick={() => void submit()}
+              loading={Boolean(progress) || locating}
+              disabled={locating}
+            >
+              {locating
+                ? "Ubicando…"
+                : progress
+                  ? `Subiendo ${progress.done}/${progress.total}…`
+                  : "Subir"}
             </Button>
           </>
         }
       >
         <div className="space-y-5">
-          <Field label="Imágenes" required hint="Puedes seleccionar varias a la vez. Máximo 15 MB por foto.">
+          <Field
+            label="Imágenes"
+            required
+            hint="Puedes seleccionar varias a la vez. Máximo 15 MB por foto. Si la foto no trae ubicación, Voyago usa dónde estás para colocarla."
+          >
             {(id) => (
               <input
                 id={id}
@@ -245,6 +281,7 @@ export function UploadPhotoModal({
               placed={placed}
               tripPlaces={tripPlaces}
               locating={locating}
+              locationError={locationError}
               onAccept={acceptSuggestion}
             />
           )}
@@ -277,17 +314,23 @@ export function UploadPhotoModal({
             </p>
           </div>
 
-          <MemoryLocationField
-            value={location}
-            onChange={setLocation}
-            tripPlace={tripPlace}
-            onPickTripPlace={setTripPlace}
-            hint={
-              sinUbicacion > 0
-                ? "Para las fotos que no traen ubicación propia. Es lo que las sitúa en el mapa de recuerdos."
-                : "Dónde se tomó exactamente. Tus fotos ya traen la suya."
-            }
-          />
+          {/* "¿Donde ocurrio?" ya no se rellena: se genera solo al elegir las
+              fotos. Solo aparece cuando no se ha podido —sin permiso, sin
+              senal— porque entonces hace falta una salida manual y quitarla
+              dejaria la foto sin ninguna forma de situarse. */}
+          {necesitaManual && (
+            <MemoryLocationField
+              value={location}
+              onChange={setLocation}
+              tripPlace={tripPlace}
+              onPickTripPlace={setTripPlace}
+              hint={
+                sinUbicacion === files.length
+                  ? "No hemos podido saberlo solos. Ponlo a mano si quieres que salgan en el mapa."
+                  : `Para las ${sinUbicacion} que no hemos podido situar solos.`
+              }
+            />
+          )}
 
           <Field label="Descripción (opcional)">
             {(id) => (
