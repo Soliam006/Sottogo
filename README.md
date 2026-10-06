@@ -418,9 +418,13 @@ Limitaciones conscientes:
 
 - El reparto de gastos es a partes iguales entre los participantes. El modelo admite
   añadir después reparto por porcentajes sin migración destructiva.
-- Los mapas base por defecto usan teselas de CARTO/OpenStreetMap, pensadas para
-  desarrollo. Para producción, define `NEXT_PUBLIC_MAP_STYLE_URL` con un estilo propio
-  (MapTiler, Stadia, Protomaps) y respeta sus condiciones de uso.
+- Los mapas base por defecto usan los estilos vectoriales de OpenFreeMap, que no
+  piden clave ni registro. Es un proyecto gratuito y **no promete disponibilidad**:
+  para producción con garantías, define `NEXT_PUBLIC_MAP_STYLE_URL` con un estilo
+  propio (MapTiler, Stadia, Protomaps) y respeta sus condiciones de uso.
+  Antes se usaba CARTO, también sin clave, y dejó de funcionar sin avisar: empezó a
+  devolver teselas con «API KEY REQUIRED» y un `200` limpio, así que el mapa
+  desapareció sin que fallara nada. De ahí que la variable de entorno exista.
 - Photon es un servicio público con límite de peticiones. Para producción, cambia a
   `PLACES_PROVIDER=google` o despliega tu propia instancia de Photon.
 - No se almacenan pasaportes, documentos de identidad ni datos bancarios, por diseño.
