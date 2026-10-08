@@ -306,6 +306,16 @@ export function MapCanvas({
 const ROUTE_SOURCE = "voyago-route";
 const ROUTE_LAYER = "voyago-route-line";
 
+/**
+ * NINGUN marcador crece al pasar el raton por encima, y no es un olvido.
+ *
+ * MapLibre coloca cada marcador con un `transform: translate(...)` sobre este
+ * mismo elemento, y en Tailwind v4 `scale-*` es la propiedad `scale` suelta,
+ * que el navegador aplica ANTES que `transform`. Con el ancla abajo, escalar
+ * antes de trasladar mueve el marcador: se salia de debajo del cursor, eso lo
+ * deshoveraba, volvia a su sitio, y asi en bucle. Parpadeaba y no habia forma
+ * de clicarlo.
+ */
 function buildMarkerElement(data: MapMarkerData, active: boolean): HTMLElement {
   if (data.variant === "memory") return buildMemoryMarker(data, active);
   if (data.variant === "step") return buildStepMarker(data, active);
@@ -322,7 +332,7 @@ function buildStepMarker(data: MapMarkerData, active: boolean): HTMLElement {
   root.setAttribute("aria-label", data.order ? `${data.order}. ${data.label}` : data.label);
   root.className = [
     "voyago-marker flex max-w-[180px] items-center gap-1.5 rounded-full border py-1 pl-1 pr-2.5",
-    "shadow-lg backdrop-blur transition-transform duration-150 hover:scale-[1.05]",
+    "shadow-lg backdrop-blur transition-transform duration-150",
     active
       ? "border-transparent bg-[var(--color-brand-600)] text-white scale-[1.06]"
       : "border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)]",
@@ -355,7 +365,7 @@ function buildMemoryMarker(data: MapMarkerData, active: boolean): HTMLElement {
   root.setAttribute("aria-label", data.count && data.count > 1 ? `${data.label} (${data.count})` : data.label);
   root.className = [
     "voyago-marker voyago-memory relative block h-14 w-14 overflow-visible rounded-2xl border-2 shadow-lg",
-    "transition-transform duration-150 hover:scale-[1.08]",
+    "transition-transform duration-150",
     active
       ? "border-[var(--color-brand-600)] scale-[1.1]"
       : "border-[var(--surface-1)]",
@@ -397,7 +407,7 @@ function buildPillMarker(data: MapMarkerData, active: boolean): HTMLElement {
   root.setAttribute("aria-label", data.label);
   root.className = [
     "voyago-marker group flex max-w-[190px] items-center gap-2 rounded-full border px-1.5 py-1.5 pr-3",
-    "shadow-lg backdrop-blur transition-transform duration-150 hover:scale-[1.04]",
+    "shadow-lg backdrop-blur transition-transform duration-150",
     active
       ? "border-transparent bg-[var(--color-brand-600)] text-white scale-[1.06]"
       : "border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)]",
