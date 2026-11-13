@@ -10,6 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { cn } from "@/lib/cn";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { mapStyleFor } from "./mapStyle";
+import { addPlaceLayers } from "./placeLayers";
 import { glyphSvg, type MarkerGlyph } from "./markerGlyphs";
 
 export interface MapMarkerData {
@@ -153,6 +154,23 @@ export function MapCanvas({
     if (!mapRef.current || !ready) return;
     mapRef.current.setStyle(mapStyleFor(resolved));
   }, [resolved, ready]);
+
+  // --- Sitios del mapa ------------------------------------------------------
+  //
+  // El estilo oscuro no trae ninguno, asi que se anaden aqui. Se repite tras
+  // cada `styledata` porque cambiar de tema reconstruye el estilo entero y se
+  // lleva por delante todo lo que no venga dentro de el.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    const pintar = () => addPlaceLayers(map, resolved);
+    pintar();
+    map.on("styledata", pintar);
+    return () => {
+      map.off("styledata", pintar);
+    };
+  }, [ready, resolved]);
 
   // --- Ruta del dia ---------------------------------------------------------
   const drawRoute = useCallback(() => {

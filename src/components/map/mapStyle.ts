@@ -30,7 +30,12 @@ import type { StyleSpecification } from "maplibre-gl";
  * aqui, y tampoco se puede quitar: es la licencia de OpenStreetMap.
  */
 const OPENFREEMAP = {
-  light: "https://tiles.openfreemap.org/styles/positron",
+  // `bright` y no `positron`: positron esta pensado como fondo neutro para
+  // poner datos encima y tiene CERO capas de sitios, asi que el mapa solo
+  // ensenaba calles. `bright` trae comercios, hoteles y estaciones.
+  light: "https://tiles.openfreemap.org/styles/bright",
+  // El oscuro se queda, porque es el unico que encaja con el tema de la
+  // aplicacion. Los sitios se le anaden por codigo: ver `placeLayers`.
   dark: "https://tiles.openfreemap.org/styles/dark",
 } as const;
 
